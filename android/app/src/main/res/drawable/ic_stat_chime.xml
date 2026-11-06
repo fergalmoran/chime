@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Notification small icon: white silhouette of media/branding/chime.svg (Android tints it; colour is ignored).
+     Scaled to 1.4 (vs 1.58 in the SVG) to leave the ~2dp padding status-bar icons expect. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="512"
+    android:viewportHeight="512">
+    <group
+        android:pivotX="256"
+        android:pivotY="256"
+        android:scaleX="1.4"
+        android:scaleY="1.4">
+        <path
+            android:pathData="M124,224a136,136 0,0 1,226 -67"
+            android:strokeColor="#FFFFFFFF"
+            android:strokeWidth="32"
+            android:strokeLineCap="round" />
+        <path
+            android:pathData="m360,115 l6,65 l-65,-6z"
+            android:fillColor="#FFFFFFFF"
+            android:strokeColor="#FFFFFFFF"
+            android:strokeWidth="12"
+            android:strokeLineJoin="round" />
+        <path
+            android:pathData="M388,288a136,136 0,0 1,-226 67"
+            android:strokeColor="#FFFFFFFF"
+            android:strokeWidth="32"
+            android:strokeLineCap="round" />
+        <path
+            android:pathData="m152,397 l-6,-65 l65,6z"
+            android:fillColor="#FFFFFFFF"
+            android:strokeColor="#FFFFFFFF"
+            android:strokeWidth="12"
+            android:strokeLineJoin="round" />
+        <path
+            android:pathData="M256,174c-32,0 -54,24 -54,56v30c0,15 -7,27 -17,38 -5,6 -1,14 7,14h128c8,0 12,-8 7,-14 -10,-11 -17,-23 -17,-38v-30c0,-32 -22,-56 -54,-56Z"
+            android:fillColor="#FFFFFFFF" />
+        <path
+            android:pathData="M237,328a19,19 0,0 0,38 0"
+            android:fillColor="#FFFFFFFF" />
+    </group>
+</vector>

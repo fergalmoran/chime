@@ -1,0 +1,8 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Chime.Api/Chime.Api.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Chime.Api.Tests/Chime.Api.Tests.csproj" />
+  </Folder>
+</Solution>

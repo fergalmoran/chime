@@ -1,0 +1,4 @@
+<resources>
+    <string name="app_name">Chime</string>
+    <string name="listener_label">Chime notification sync</string>
+</resources>

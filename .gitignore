@@ -1,0 +1,27 @@
+# .NET
+api/**/bin/
+api/**/obj/
+*.db
+*.db-shm
+*.db-wal
+
+# Editors / OS
+.idea/
+.DS_Store
+*.swp
+
+# Env
+.env
+.env.local
+
+# Local Firebase service-account credentials
+api-firebase.json
+media/
+
+# JetBrains Rider / ReSharper
+*.DotSettings.user
+*.sln.iml
+riderModule.iml
+_ReSharper.Caches/
+_ReSharper*/
+*.[Rr]e[Ss]harper
