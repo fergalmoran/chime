@@ -1,0 +1,12 @@
+node_modules/
+dist/
+.tanstack/
+.output/
+.nitro/
+.env
+.env.*
+!.env.example
+tests/
+.vscode/
+Dockerfile
+.dockerignore

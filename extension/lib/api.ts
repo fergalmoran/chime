@@ -67,7 +67,7 @@ function browserName() {
 /** Exchanges a Google ID token for API tokens (the only way to sign in). */
 export async function loginWithGoogle(apiUrl: string, idToken: string): Promise<Session> {
   apiUrl = normalise(apiUrl);
-  const res = await fetch(`${apiUrl}/auth/google`, {
+  const res = await fetch(`${apiUrl}/api/auth/google`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ idToken }),
@@ -102,7 +102,7 @@ export async function logout() {
 }
 
 async function refresh(session: Session): Promise<Session | null> {
-  const res = await fetch(`${session.apiUrl}/auth/refresh`, {
+  const res = await fetch(`${session.apiUrl}/api/auth/refresh`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ refreshToken: session.refreshToken }),

@@ -43,8 +43,8 @@ public class GoogleAuthTests(ApiFactory factory) : IClassFixture<ApiFactory>
     }
 
     [Theory]
-    [InlineData("/auth/register")]
-    [InlineData("/auth/login")]
+    [InlineData("/api/auth/register")]
+    [InlineData("/api/auth/login")]
     public async Task Password_endpoints_are_not_exposed(string path)
     {
         var response = await factory.CreateClient().PostAsJsonAsync(path, new { email = "a@b.com", password = "Sup3r-secret!" });
@@ -58,8 +58,8 @@ public class GoogleAuthTests(ApiFactory factory) : IClassFixture<ApiFactory>
         var (_, tokens) = await factory.SignInWithGoogleAsync($"sub-{email}|{email}|true");
         var client = factory.CreateClient();
 
-        var refreshed = await client.PostAsJsonAsync("/auth/refresh", new { tokens.RefreshToken });
-        var bogus = await client.PostAsJsonAsync("/auth/refresh", new { refreshToken = "garbage" });
+        var refreshed = await client.PostAsJsonAsync("/api/auth/refresh", new { tokens.RefreshToken });
+        var bogus = await client.PostAsJsonAsync("/api/auth/refresh", new { refreshToken = "garbage" });
 
         Assert.Equal(HttpStatusCode.OK, refreshed.StatusCode);
         var fresh = await refreshed.Content.ReadFromJsonAsync<ApiFactory.TokenResponse>();
@@ -81,7 +81,7 @@ public class GoogleAuthTests(ApiFactory factory) : IClassFixture<ApiFactory>
     public async Task Google_sign_in_is_unavailable_when_not_configured()
     {
         using var unconfigured = new UnconfiguredGoogleApiFactory();
-        var response = await unconfigured.CreateClient().PostAsJsonAsync("/auth/google", new { idToken = "x|y@z.com|true" });
+        var response = await unconfigured.CreateClient().PostAsJsonAsync("/api/auth/google", new { idToken = "x|y@z.com|true" });
         Assert.Equal(HttpStatusCode.NotImplemented, response.StatusCode);
     }
 
@@ -101,7 +101,7 @@ public class GoogleAuthTests(ApiFactory factory) : IClassFixture<ApiFactory>
     private async Task<(HttpStatusCode Status, MeResponse? Me)> SignInAsync(string idToken)
     {
         var client = factory.CreateClient();
-        var response = await client.PostAsJsonAsync("/auth/google", new { idToken });
+        var response = await client.PostAsJsonAsync("/api/auth/google", new { idToken });
         if (!response.IsSuccessStatusCode) return (response.StatusCode, null);
 
         var tokens = await response.Content.ReadFromJsonAsync<ApiFactory.TokenResponse>();

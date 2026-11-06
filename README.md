@@ -40,7 +40,7 @@ After signing in on Android, tap **Grant access** to enable notification access.
 ## Google sign-in
 
 Google is the **only** way to sign in; there are no username/password endpoints. Every client gets a Google
-**ID token** and exchanges it at `POST /auth/google` for bearer/refresh tokens. The first sign-in creates an account,
+**ID token** and exchanges it at `POST /api/auth/google` for bearer/refresh tokens. The first sign-in creates an account,
 or links to an existing account with the same (verified) email. Each client needs its Google client ID configured
 (below) or it shows a "not configured" message instead of the sign-in button.
 
@@ -74,7 +74,7 @@ Then set the **web** client ID in each place:
 | Extension | `WXT_GOOGLE_CLIENT_ID` in `extension/.env` |
 | Android | `chime.googleWebClientId=…` in `~/.gradle/gradle.properties` (or `-Pchime.googleWebClientId=…`) |
 
-Until it's set, the API returns `501` from `/auth/google` and the clients show a "not configured" message instead of the sign-in button.
+Until it's set, the API returns `501` from `/api/auth/google` and the clients show a "not configured" message instead of the sign-in button.
 
 ## Send a web page to your phone
 
@@ -156,8 +156,8 @@ requirement for the .NET-configured file path.
 
 | Endpoint | Purpose |
 | --- | --- |
-| `POST /auth/google` | Exchange a Google ID token for bearer/refresh tokens (only sign-in method) |
-| `POST /auth/refresh` | Exchange a refresh token for new tokens |
+| `POST /api/auth/google` | Exchange a Google ID token for bearer/refresh tokens (only sign-in method) |
+| `POST /api/auth/refresh` | Exchange a refresh token for new tokens |
 | `GET /api/me` | Current user |
 | `GET/POST /api/devices`, `DELETE /api/devices/{id}` | Registered phones / browsers |
 | `PUT /api/devices/{id}/push-token` | Android registers an FCM token (`{"token":null}` unregisters it) |
@@ -166,13 +166,36 @@ requirement for the .NET-configured file path.
 | `POST /api/notifications` | Called by the phone. `201` stored, `200` duplicate (`externalKey`), `204` filtered by settings |
 | `POST /api/notifications/{id}/dismiss`, `DELETE /api/notifications/{id}` | Dismiss / delete |
 | `GET/PUT /api/settings` | Sync on/off, categories, muted apps, hide bodies, retention |
-| `/hubs/notifications` (SignalR) | Pushes `NotificationReceived` / `NotificationDismissed` to the signed-in user |
+| `/api/hubs/notifications` (SignalR) | Pushes `NotificationReceived` / `NotificationDismissed` to the signed-in user |
 
 The OpenAPI document is at `/openapi/v1.json` in Development. A background service purges notifications older
-than each user's retention period.
+than each user's retention period. `GET /api/health` is an unauthenticated liveness check.
+
+Every route lives under `/api`, so in production one origin serves both: `https://chime.ferg.al/api/*` goes to
+the API and everything else to the web app. Clients use the origin as their API URL and append the paths above.
+
+## Docker
+
+The API and web app each build an image (amd64), published to GHCR by GitHub Actions
+(`.github/workflows/api.yml`, `web.yml`). Pull requests build without publishing; pushes to `trunk` publish
+`latest` and a commit-SHA tag; `v*` tags also publish version tags.
+
+| Image | Listens on | Notes |
+| --- | --- | --- |
+| `ghcr.io/fergalmoran/chime-api` | `8080` | Mount a volume at **`/data`**: it holds the SQLite database and the Data Protection key ring (without it, every restart signs everyone out). Migrations run on startup. Set `Authentication__Google__ClientIds__0`, `Firebase__ProjectId` (defaults from `appsettings.json`) and `Firebase__CredentialsFilePath` (mount the service-account key, e.g. as a secret). Forwarded headers are trusted, for running behind Traefik. |
+| `ghcr.io/fergalmoran/chime-web` | `3000` | `VITE_API_URL` (default `https://chime.ferg.al`) and `VITE_GOOGLE_CLIENT_ID` are compiled in: build args, overridable via repository variables of the same name. |
+
+Build and run locally:
+
+```bash
+docker build -t chime-api api && docker run --rm -p 8080:8080 -v chime-data:/data \
+  -e Cors__AllowedOrigins__0=http://localhost:3000 chime-api   # cross-origin locally; same origin in production
+docker build -t chime-web --build-arg VITE_API_URL=http://localhost:8080 web && docker run --rm -p 3000:3000 chime-web
+```
 
 ## Development notes
 
+- **Production web server:** `cd web && bun run build && bun server.js` (what the image runs; `PORT`, default 3000).
 - **Tests:** `cd api && dotnet test` · `cd android && ./gradlew testDebugUnitTest lintDebug` ·
   `cd web && bun test && bun run check && bunx tsc --noEmit` · `cd extension && bun test && bun run compile`
 - **Migrations:** `cd api && dotnet ef migrations add <Name> -p src/Chime.Api -o Data/Migrations`

@@ -1,4 +1,5 @@
 using System.Text.Json.Serialization;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Authentication.BearerToken;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -23,13 +24,20 @@ builder.Services
 builder.Services.Configure<BearerTokenOptions>(IdentityConstants.BearerScheme, options => {
   options.Events.OnMessageReceived = context => {
     var token = context.Request.Query["access_token"];
-    if (!string.IsNullOrEmpty(token) && context.HttpContext.Request.Path.StartsWithSegments("/hubs")) {
+    if (!string.IsNullOrEmpty(token) && context.HttpContext.Request.Path.StartsWithSegments("/api/hubs")) {
       context.Token = token;
     }
 
     return Task.CompletedTask;
   };
 });
+
+// Bearer and refresh tokens are encrypted with Data Protection keys. Keep the key ring on a persistent volume
+// in containers (DataProtection:KeysPath), or every restart/redeploy invalidates every signed-in session.
+var dataProtection = builder.Services.AddDataProtection().SetApplicationName("chime");
+if (builder.Configuration["DataProtection:KeysPath"] is { Length: > 0 } keysPath) {
+  dataProtection.PersistKeysToFileSystem(new DirectoryInfo(keysPath));
+}
 
 builder.Services.Configure<GoogleAuthOptions>(builder.Configuration.GetSection("Authentication:Google"));
 builder.Services.AddSingleton<IGoogleTokenValidator, GoogleTokenValidator>();
@@ -74,17 +82,21 @@ app.UseCors();
 app.UseAuthentication();
 app.UseAuthorization();
 
-app.MapGet("/health", () => TypedResults.Ok(new {status = "ok"})).AllowAnonymous();
+// Every route lives under /api so a reverse proxy can serve the API and web app from one origin
+// (e.g. https://chime.ferg.al/api/* -> API, everything else -> web).
+var api = app.MapGroup("/api");
 
-app.MapGroup("/auth").WithTags("Auth").MapGoogleAuth();
+api.MapGet("/health", () => TypedResults.Ok(new {status = "ok"})).AllowAnonymous();
 
-app.MapGroup("/api")
+api.MapGroup("/auth").WithTags("Auth").MapGoogleAuth();
+
+api.MapGroup("")
   .RequireAuthorization()
   .MapAccountEndpoints()
   .MapDeviceEndpoints()
   .MapNotificationEndpoints();
 
-app.MapHub<NotificationsHub>("/hubs/notifications");
+app.MapHub<NotificationsHub>("/api/hubs/notifications");
 
 app.Run();
 

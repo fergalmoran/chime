@@ -44,7 +44,7 @@ class ChimeApi(private val sessions: SessionStore) {
     /** Exchanges a Google ID token (from Credential Manager) for API tokens; the only way to sign in. */
     suspend fun loginWithGoogle(apiUrl: String, idToken: String, email: String, deviceName: String): Session {
         val baseUrl = apiUrl.trim().trimEnd('/')
-        val response = client.post("$baseUrl/auth/google") {
+        val response = client.post("$baseUrl/api/auth/google") {
             contentType(ContentType.Application.Json)
             setBody(GoogleLoginRequest(idToken))
         }
@@ -112,7 +112,7 @@ class ChimeApi(private val sessions: SessionStore) {
         val latest = sessions.current() ?: throw ApiException(HttpStatusCode.Unauthorized)
         if (latest.accessToken != stale.accessToken) return latest
 
-        val response = client.post("${latest.apiUrl}/auth/refresh") {
+        val response = client.post("${latest.apiUrl}/api/auth/refresh") {
             contentType(ContentType.Application.Json)
             setBody(RefreshRequest(latest.refreshToken))
         }

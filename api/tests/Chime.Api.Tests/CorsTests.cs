@@ -24,7 +24,7 @@ public class CorsTests(ApiFactory factory) : IClassFixture<ApiFactory>
             }
         });
         using var client = configured.CreateClient();
-        using var request = new HttpRequestMessage(HttpMethod.Options, "/auth/google");
+        using var request = new HttpRequestMessage(HttpMethod.Options, "/api/auth/google");
         request.Headers.Add("Origin", origin);
         request.Headers.Add("Access-Control-Request-Method", "POST");
         request.Headers.Add("Access-Control-Request-Headers", "content-type");

@@ -26,7 +26,7 @@ export function useLiveNotifications() {
 
 	useEffect(() => {
 		const connection = new HubConnectionBuilder()
-			.withUrl(`${API_URL}/hubs/notifications`, {
+			.withUrl(`${API_URL}/api/hubs/notifications`, {
 				accessTokenFactory: async () => (await getAccessToken()) ?? "",
 			})
 			.withAutomaticReconnect()

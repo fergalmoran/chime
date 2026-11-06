@@ -115,7 +115,7 @@ let refreshing: Promise<boolean> | null = null;
 async function refreshTokens(): Promise<boolean> {
 	const tokens = readTokens();
 	if (!tokens) return false;
-	refreshing ??= fetch(`${API_URL}/auth/refresh`, {
+	refreshing ??= fetch(`${API_URL}/api/auth/refresh`, {
 		method: "POST",
 		headers: { "Content-Type": "application/json" },
 		body: JSON.stringify({ refreshToken: tokens.refreshToken }),
@@ -183,7 +183,7 @@ async function signIn(path: string, body: unknown) {
 }
 
 export const api = {
-	loginWithGoogle: (idToken: string) => signIn("/auth/google", { idToken }),
+	loginWithGoogle: (idToken: string) => signIn("/api/auth/google", { idToken }),
 	me: () => request<Me>("/api/me"),
 	devices: () => request<Device[]>("/api/devices"),
 	deleteDevice: (id: string) =>

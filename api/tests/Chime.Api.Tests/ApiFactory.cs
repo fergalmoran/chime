@@ -33,11 +33,11 @@ public class ApiFactory : WebApplicationFactory<Program>
 
     protected virtual bool GoogleConfigured => true;
 
-    /// <summary>Signs in through /auth/google with a fake token of the form "sub|email|verified".</summary>
+    /// <summary>Signs in through /api/auth/google with a fake token of the form "sub|email|verified".</summary>
     public async Task<(HttpClient Client, TokenResponse Tokens)> SignInWithGoogleAsync(string idToken)
     {
         var client = CreateClient();
-        var response = await client.PostAsJsonAsync("/auth/google", new { idToken });
+        var response = await client.PostAsJsonAsync("/api/auth/google", new { idToken });
         response.EnsureSuccessStatusCode();
         var tokens = await response.Content.ReadFromJsonAsync<TokenResponse>(Json);
         client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", tokens!.AccessToken);

@@ -93,7 +93,7 @@ public class NotificationFlowTests(ApiFactory factory) : IClassFixture<ApiFactor
         var received = new TaskCompletionSource<NotificationDto>(TaskCreationOptions.RunContinuationsAsynchronously);
 
         await using var connection = new HubConnectionBuilder()
-            .WithUrl(new Uri(factory.Server.BaseAddress, "/hubs/notifications"), options =>
+            .WithUrl(new Uri(factory.Server.BaseAddress, "/api/hubs/notifications"), options =>
             {
                 options.HttpMessageHandlerFactory = _ => factory.Server.CreateHandler();
                 options.Transports = Microsoft.AspNetCore.Http.Connections.HttpTransportType.LongPolling;

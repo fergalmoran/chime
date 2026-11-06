@@ -7,11 +7,11 @@ import viteReact from "@vitejs/plugin-react";
 import { defineConfig } from "vite";
 
 const config = defineConfig({
-  resolve: { tsconfigPaths: true },
-  plugins: [devtools(), tailwindcss(), tanstackStart(), viteReact()],
-  server: {
-    allowedHosts: ["chime.dev.fergl.ie"]
-  }
+	resolve: { tsconfigPaths: true },
+	plugins: [devtools(), tailwindcss(), tanstackStart(), viteReact()],
+	server: {
+		allowedHosts: ["chime.dev.fergl.ie"],
+	},
 });
 
 export default config;
