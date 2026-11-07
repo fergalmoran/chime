@@ -52,7 +52,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
 				<script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
 				<HeadContent />
 			</head>
-			<body className="flex min-h-screen flex-col bg-background text-foreground antialiased">
+			<body className="flex min-h-dvh flex-col bg-background text-foreground antialiased">
 				<SiteHeader />
 				<div className="flex-1">{children}</div>
 				<SiteFooter />

@@ -195,13 +195,13 @@
   --radius-4xl: calc(var(--radius) * 2.6);
 }
 
-html,
-body,
-#app {
-  min-height: 100%;
-}
-
 @layer base {
+  /* In the base layer (not unlayered) so utilities like the body's min-h-dvh can override it. */
+  html,
+  body,
+  #app {
+    min-height: 100%;
+  }
   * {
     @apply border-border outline-ring/50;
   }

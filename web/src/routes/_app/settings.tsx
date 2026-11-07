@@ -1,6 +1,10 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { type FormEvent, useState } from "react";
+import {
+	createFileRoute,
+	useLocation,
+	useNavigate,
+} from "@tanstack/react-router";
+import { type FormEvent, useEffect, useRef, useState } from "react";
 import { Button } from "#/components/ui/button";
 import {
 	Card,
@@ -171,6 +175,16 @@ function DeleteAccount() {
 	const navigate = useNavigate();
 	const me = useQuery({ queryKey: ["me"], queryFn: api.me });
 	const [confirmation, setConfirmation] = useState("");
+	const card = useRef<HTMLDivElement>(null);
+	const hash = useLocation({ select: (l) => l.hash });
+
+	// The footer links to /settings#delete-account, but this card only renders once settings have
+	// loaded, after the router's own hash scroll has already run.
+	useEffect(() => {
+		if (hash !== "delete-account") return;
+		card.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+		card.current?.querySelector("input")?.focus({ preventScroll: true });
+	}, [hash]);
 	const remove = useMutation({
 		mutationFn: api.deleteAccount,
 		onSuccess: () => {
@@ -185,7 +199,11 @@ function DeleteAccount() {
 		!!email && confirmation.trim().toLowerCase() === email.toLowerCase();
 
 	return (
-		<Card className="border-destructive/50">
+		<Card
+			id="delete-account"
+			ref={card}
+			className="scroll-mt-20 border-destructive/50"
+		>
 			<CardHeader>
 				<CardTitle>Delete account</CardTitle>
 				<CardDescription>
