@@ -52,9 +52,9 @@ function RootDocument({ children }: { children: React.ReactNode }) {
 				<script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
 				<HeadContent />
 			</head>
-			<body className="min-h-screen bg-background text-foreground antialiased">
+			<body className="flex min-h-screen flex-col bg-background text-foreground antialiased">
 				<SiteHeader />
-				{children}
+				<div className="flex-1">{children}</div>
 				<SiteFooter />
 				<TanStackDevtools
 					config={{
