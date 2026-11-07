@@ -7,6 +7,7 @@ import {
 } from "@tanstack/react-router";
 import { TanStackRouterDevtoolsPanel } from "@tanstack/react-router-devtools";
 
+import { SiteFooter } from "../components/site-footer";
 import { SiteHeader } from "../components/site-header";
 import TanStackQueryDevtools from "../integrations/tanstack-query/devtools";
 import { themeInitScript } from "../lib/theme";
@@ -54,6 +55,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
 			<body className="min-h-screen bg-background text-foreground antialiased">
 				<SiteHeader />
 				{children}
+				<SiteFooter />
 				<TanStackDevtools
 					config={{
 						position: "bottom-right",
