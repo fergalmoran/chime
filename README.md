@@ -225,3 +225,9 @@ docker build -t chime-web --build-arg VITE_API_URL=http://localhost:8080 web && 
 - Postgres (or similar) for production, plus HTTPS and a real deployment
 - More phone actions over FCM (e.g. reply/dismiss on the phone)
 - Live SignalR feed in the extension popup, per-app icons, quick replies
+
+## License
+
+Copyright 2026 Fergal Moran
+
+Licensed under the [Apache License, Version 2.0](LICENSE).

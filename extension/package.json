@@ -2,6 +2,7 @@
   "name": "chime-extension",
   "description": "See your phone notifications in your browser.",
   "private": true,
+  "license": "Apache-2.0",
   "version": "0.1.1",
   "type": "module",
   "scripts": {
