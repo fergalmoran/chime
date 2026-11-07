@@ -17,7 +17,24 @@ export default defineConfig({
       ? { key: process.env.WXT_CHROME_EXTENSION_KEY }
       : {}),
     ...(browser === 'firefox'
-      ? { browser_specific_settings: { gecko: { id: 'chime@podnoms.com' } } }
+      ? {
+          browser_specific_settings: {
+            gecko: {
+              id: 'chime@podnoms.com',
+              // Required by AMO. Declares what the extension transmits off-device:
+              // the Google sign-in token and account email, and (when the user
+              // sends a page to their phone) the active tab's URL and title.
+              data_collection_permissions: {
+                required: [
+                  'authenticationInfo',
+                  'personallyIdentifyingInfo',
+                  'browsingActivity',
+                  'websiteContent',
+                ],
+              },
+            },
+          },
+        }
       : {}),
   }),
 });
