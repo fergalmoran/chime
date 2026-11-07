@@ -92,6 +92,7 @@ api.MapGroup("/auth").WithTags("Auth").MapGoogleAuth();
 
 api.MapGroup("")
   .RequireAuthorization()
+  .RequireExistingUser()
   .MapAccountEndpoints()
   .MapDeviceEndpoints()
   .MapNotificationEndpoints();

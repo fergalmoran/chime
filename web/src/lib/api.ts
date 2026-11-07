@@ -185,6 +185,8 @@ async function signIn(path: string, body: unknown) {
 export const api = {
 	loginWithGoogle: (idToken: string) => signIn("/api/auth/google", { idToken }),
 	me: () => request<Me>("/api/me"),
+	/** Permanently deletes the account and all its data. */
+	deleteAccount: () => request<void>("/api/account", { method: "DELETE" }),
 	devices: () => request<Device[]>("/api/devices"),
 	deleteDevice: (id: string) =>
 		request<void>(`/api/devices/${id}`, { method: "DELETE" }),

@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { type FormEvent, useState } from "react";
 import { Button } from "#/components/ui/button";
 import {
@@ -13,7 +13,13 @@ import { Checkbox } from "#/components/ui/checkbox";
 import { Input } from "#/components/ui/input";
 import { Label } from "#/components/ui/label";
 import { Switch } from "#/components/ui/switch";
-import { ALL_CATEGORIES, api, describeError, type Settings } from "#/lib/api";
+import {
+	ALL_CATEGORIES,
+	api,
+	authStore,
+	describeError,
+	type Settings,
+} from "#/lib/api";
 
 export const Route = createFileRoute("/_app/settings")({
 	component: SettingsPage,
@@ -27,7 +33,12 @@ function SettingsPage() {
 	if (isPending) return <p className="text-muted-foreground">Loading…</p>;
 	if (isError)
 		return <p className="text-destructive">Couldn't load settings.</p>;
-	return <SettingsForm initial={data} />;
+	return (
+		<div className="grid gap-6">
+			<SettingsForm initial={data} />
+			<DeleteAccount />
+		</div>
+	);
 }
 
 function SettingsForm({ initial }: { initial: Settings }) {
@@ -152,5 +163,77 @@ function SettingsForm({ initial }: { initial: Settings }) {
 				)}
 			</div>
 		</form>
+	);
+}
+
+function DeleteAccount() {
+	const queryClient = useQueryClient();
+	const navigate = useNavigate();
+	const me = useQuery({ queryKey: ["me"], queryFn: api.me });
+	const [confirmation, setConfirmation] = useState("");
+	const remove = useMutation({
+		mutationFn: api.deleteAccount,
+		onSuccess: () => {
+			authStore.logout();
+			queryClient.clear();
+			navigate({ to: "/" });
+		},
+	});
+
+	const email = me.data?.email;
+	const confirmed =
+		!!email && confirmation.trim().toLowerCase() === email.toLowerCase();
+
+	return (
+		<Card className="border-destructive/50">
+			<CardHeader>
+				<CardTitle>Delete account</CardTitle>
+				<CardDescription>
+					Permanently deletes your account, synced notifications, devices and
+					settings. Every phone, browser and extension signed in to it will be
+					signed out. This can't be undone.
+				</CardDescription>
+			</CardHeader>
+			<CardContent>
+				<form
+					className="grid gap-3"
+					onSubmit={(e) => {
+						e.preventDefault();
+						if (confirmed) remove.mutate();
+					}}
+				>
+					<Label htmlFor="delete-confirm" className="font-normal">
+						To confirm, type your email address
+						{email && (
+							<>
+								{" "}
+								<span className="font-medium">{email}</span>
+							</>
+						)}
+					</Label>
+					<Input
+						id="delete-confirm"
+						autoComplete="off"
+						className="max-w-sm"
+						value={confirmation}
+						onChange={(e) => setConfirmation(e.target.value)}
+					/>
+					<div className="flex items-center gap-3">
+						<Button
+							type="submit"
+							variant="destructive"
+							disabled={!confirmed || remove.isPending}
+						>
+							{remove.isPending ? "Deleting…" : "Delete my account"}
+						</Button>
+						{remove.isError && (
+							<span className="text-sm text-destructive">
+								{describeError(remove.error)}
+							</span>
+						)}
+					</div>
+				</form>
+			</CardContent>
+		</Card>
 	);
 }

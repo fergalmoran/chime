@@ -161,6 +161,7 @@ requirement for the .NET-configured file path.
 | `POST /api/auth/google` | Exchange a Google ID token for bearer/refresh tokens (only sign-in method) |
 | `POST /api/auth/refresh` | Exchange a refresh token for new tokens |
 | `GET /api/me` | Current user |
+| `DELETE /api/account` | Permanently delete the account and all its data; outstanding tokens stop working immediately |
 | `GET/POST /api/devices`, `DELETE /api/devices/{id}` | Registered phones / browsers |
 | `PUT /api/devices/{id}/push-token` | Android registers an FCM token (`{"token":null}` unregisters it) |
 | `POST /api/devices/{id}/links` | Send `{"url":"https://…","title":"…"}` to an owned Android phone via FCM |
