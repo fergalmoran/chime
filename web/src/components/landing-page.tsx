@@ -1,13 +1,6 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
-import {
-	BellRing,
-	Laptop,
-	Lock,
-	MessageSquare,
-	Smartphone,
-	Zap,
-} from "lucide-react";
-import { Button } from "#/components/ui/button";
+import { Laptop, Lock, MessageSquare, Smartphone, Zap } from "lucide-react";
+import { ChimeLogo } from "#/components/chime-logo";
+import { SignInButton } from "#/components/sign-in-button";
 import {
 	Card,
 	CardDescription,
@@ -15,14 +8,12 @@ import {
 	CardTitle,
 } from "#/components/ui/card";
 
-export const Route = createFileRoute("/")({ component: Home });
-
 const features = [
 	{
 		icon: MessageSquare,
 		title: "Every message, one place",
 		description:
-			"WhatsApp, SMS, email and more — mirrored from your phone the moment they arrive.",
+			"WhatsApp, SMS, email and more - mirrored from your phone the moment they arrive.",
 	},
 	{
 		icon: Zap,
@@ -38,13 +29,13 @@ const features = [
 	},
 ];
 
-function Home() {
+export function LandingPage() {
 	return (
 		<main>
 			<section className="mx-auto max-w-5xl px-4 py-20 text-center">
 				<div className="mx-auto mb-6 flex w-fit items-center gap-3 text-muted-foreground">
 					<Smartphone className="size-6" />
-					<BellRing className="size-5 animate-pulse text-primary" />
+					<ChimeLogo className="size-9" />
 					<Laptop className="size-6" />
 				</div>
 				<h1 className="text-balance text-4xl font-bold tracking-tight sm:text-6xl">
@@ -56,9 +47,7 @@ function Home() {
 					for your pocket.
 				</p>
 				<div className="mt-10 flex justify-center gap-3">
-					<Button asChild size="lg">
-						<Link to="/login">Get started with Google</Link>
-					</Button>
+					<SignInButton size="lg" />
 				</div>
 			</section>
 

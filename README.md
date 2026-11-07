@@ -48,7 +48,9 @@ In [Google Cloud Console](https://console.cloud.google.com/apis/credentials) cre
 
 1. **Web application** client (used by the API, web, extension *and* Android):
    - Authorised JavaScript origins: `http://localhost:3000` (plus your production web origin)
-   - Authorised redirect URIs: the extension's redirect URL. The background script logs it on startup as
+   - Authorised redirect URIs: the web app's `<origin>/auth/callback` for each web origin (e.g.
+     `https://chime.dev.fergl.ie:3000/auth/callback`, `https://chime.ferg.al/auth/callback`), plus the
+     extension's redirect URL. The background script logs it on startup as
      `Chime Google redirect URI: https://<extension-id>.chromiumapp.org/` (Firefox: `…extensions.allizom.org/`).
      Pin the extension ID or the URL changes between installs:
      - Firefox: pinned via `browser_specific_settings.gecko.id` (`chime@podnoms.com`) in `wxt.config.ts`,

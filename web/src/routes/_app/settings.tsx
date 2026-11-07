@@ -15,7 +15,7 @@ import { Label } from "#/components/ui/label";
 import { Switch } from "#/components/ui/switch";
 import { ALL_CATEGORIES, api, describeError, type Settings } from "#/lib/api";
 
-export const Route = createFileRoute("/app/settings")({
+export const Route = createFileRoute("/_app/settings")({
 	component: SettingsPage,
 });
 

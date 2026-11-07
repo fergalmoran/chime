@@ -29,7 +29,7 @@ export function showDesktopNotification(notification: SyncedNotification) {
 		);
 		toast.onclick = () => {
 			window.focus();
-			window.location.assign("/app");
+			window.location.assign("/");
 			toast.close();
 		};
 		toast.onerror = () =>

@@ -9,6 +9,7 @@ import { TanStackRouterDevtoolsPanel } from "@tanstack/react-router-devtools";
 
 import { SiteHeader } from "../components/site-header";
 import TanStackQueryDevtools from "../integrations/tanstack-query/devtools";
+import { themeInitScript } from "../lib/theme";
 import appCss from "../styles.css?url";
 
 interface MyRouterContext {
@@ -44,8 +45,10 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
 
 function RootDocument({ children }: { children: React.ReactNode }) {
 	return (
-		<html lang="en">
+		<html lang="en" suppressHydrationWarning>
 			<head>
+				{/* biome-ignore lint/security/noDangerouslySetInnerHtml: static theme bootstrap */}
+				<script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
 				<HeadContent />
 			</head>
 			<body className="min-h-screen bg-background text-foreground antialiased">

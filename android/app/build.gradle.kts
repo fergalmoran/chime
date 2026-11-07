@@ -19,11 +19,9 @@ android {
         applicationId = "com.podnoms.chime"
         minSdk = 26
         targetSdk = 37
-        versionCode = 1
-        versionName = "0.1.0"
-
-        // Development API (emulators and physical devices alike).
-        buildConfigField("String", "DEFAULT_API_URL", "\"https://chime.dev.fergl.ie:5002\"")
+        // Release builds pass these (-Pchime.versionCode=…, -Pchime.versionName=…); see scripts/release-build.sh.
+        versionCode = providers.gradleProperty("chime.versionCode").map(String::toInt).getOrElse(1)
+        versionName = providers.gradleProperty("chime.versionName").getOrElse("0.1.0")
 
         // Google OAuth *Web application* client ID (the API validates ID tokens against it).
         // Set chime.googleWebClientId in android/gradle.properties (or ~/.gradle/gradle.properties, or -P); empty hides Google sign-in.
@@ -31,8 +29,30 @@ android {
         buildConfigField("String", "GOOGLE_WEB_CLIENT_ID", "\"$googleWebClientId\"")
     }
 
+    // Upload key for Play (Play App Signing re-signs with the app signing key). Read from the environment so
+    // nothing secret lives in the repo; when unset, release builds are left unsigned.
+    val keystorePath = providers.environmentVariable("CHIME_KEYSTORE_PATH").orNull
+    signingConfigs {
+        if (keystorePath != null) {
+            create("release") {
+                storeFile = file(keystorePath)
+                storePassword = providers.environmentVariable("CHIME_KEYSTORE_PASSWORD").get()
+                keyAlias = providers.environmentVariable("CHIME_KEY_ALIAS").getOrElse("upload")
+                keyPassword = providers.environmentVariable("CHIME_KEY_PASSWORD")
+                    .orElse(providers.environmentVariable("CHIME_KEYSTORE_PASSWORD")).get()
+            }
+        }
+    }
+
     buildTypes {
+        debug {
+            // Development API (emulators and physical devices alike).
+            buildConfigField("String", "DEFAULT_API_URL", "\"https://chime.dev.fergl.ie:5002\"")
+        }
         release {
+            val apiUrl = providers.gradleProperty("chime.releaseApiUrl").getOrElse("https://chime.ferg.al")
+            buildConfigField("String", "DEFAULT_API_URL", "\"$apiUrl\"")
+            signingConfigs.findByName("release")?.let { signingConfig = it }
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")

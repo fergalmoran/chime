@@ -9,26 +9,14 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as IndexRouteImport } from './routes/index'
-import { Route as AppRouteImport } from './routes/app'
-import { Route as LoginRouteImport } from './routes/login'
-import { Route as AppIndexRouteImport } from './routes/app/index'
-import { Route as AppDevicesRouteImport } from './routes/app/devices'
-import { Route as AppSettingsRouteImport } from './routes/app/settings'
+import { Route as AppRouteImport } from './routes/_app'
+import { Route as AppIndexRouteImport } from './routes/_app/index'
+import { Route as AppDevicesRouteImport } from './routes/_app/devices'
+import { Route as AppSettingsRouteImport } from './routes/_app/settings'
+import { Route as AuthCallbackRouteImport } from './routes/auth/callback'
 
-const IndexRoute = IndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const AppRoute = AppRouteImport.update({
-  id: '/app',
-  path: '/app',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const LoginRoute = LoginRouteImport.update({
-  id: '/login',
-  path: '/login',
+  id: '/_app',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AppIndexRoute = AppIndexRouteImport.update({
@@ -46,96 +34,87 @@ const AppSettingsRoute = AppSettingsRouteImport.update({
   path: '/settings',
   getParentRoute: () => AppRoute,
 } as any)
+const AuthCallbackRoute = AuthCallbackRouteImport.update({
+  id: '/auth/callback',
+  path: '/auth/callback',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
-  '/': typeof IndexRoute
-  '/app': typeof AppRouteWithChildren
-  '/login': typeof LoginRoute
-  '/app/devices': typeof AppDevicesRoute
-  '/app/settings': typeof AppSettingsRoute
-  '/app/': typeof AppIndexRoute
+  '/': typeof AppIndexRoute
+  '/devices': typeof AppDevicesRoute
+  '/settings': typeof AppSettingsRoute
+  '/auth/callback': typeof AuthCallbackRoute
 }
 export interface FileRoutesByTo {
-  '/': typeof IndexRoute
-  '/login': typeof LoginRoute
-  '/app/devices': typeof AppDevicesRoute
-  '/app/settings': typeof AppSettingsRoute
-  '/app': typeof AppIndexRoute
+  '/devices': typeof AppDevicesRoute
+  '/settings': typeof AppSettingsRoute
+  '/auth/callback': typeof AuthCallbackRoute
+  '/': typeof AppIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
-  '/': typeof IndexRoute
-  '/app': typeof AppRouteWithChildren
-  '/login': typeof LoginRoute
-  '/app/devices': typeof AppDevicesRoute
-  '/app/settings': typeof AppSettingsRoute
-  '/app/': typeof AppIndexRoute
+  '/_app': typeof AppRouteWithChildren
+  '/_app/devices': typeof AppDevicesRoute
+  '/_app/settings': typeof AppSettingsRoute
+  '/auth/callback': typeof AuthCallbackRoute
+  '/_app/': typeof AppIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths:
-    '/' | '/app' | '/login' | '/app/devices' | '/app/settings' | '/app/'
+  fullPaths: '/' | '/devices' | '/settings' | '/auth/callback'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/login' | '/app/devices' | '/app/settings' | '/app'
+  to: '/devices' | '/settings' | '/auth/callback' | '/'
   id:
     | '__root__'
-    | '/'
-    | '/app'
-    | '/login'
-    | '/app/devices'
-    | '/app/settings'
-    | '/app/'
+    | '/_app'
+    | '/_app/devices'
+    | '/_app/settings'
+    | '/auth/callback'
+    | '/_app/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
-  IndexRoute: typeof IndexRoute
   AppRoute: typeof AppRouteWithChildren
-  LoginRoute: typeof LoginRoute
+  AuthCallbackRoute: typeof AuthCallbackRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/': {
-      id: '/'
-      path: '/'
+    '/_app': {
+      id: '/_app'
+      path: ''
       fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/app': {
-      id: '/app'
-      path: '/app'
-      fullPath: '/app'
       preLoaderRoute: typeof AppRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/login': {
-      id: '/login'
-      path: '/login'
-      fullPath: '/login'
-      preLoaderRoute: typeof LoginRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/app/': {
-      id: '/app/'
+    '/_app/': {
+      id: '/_app/'
       path: '/'
-      fullPath: '/app/'
+      fullPath: '/'
       preLoaderRoute: typeof AppIndexRouteImport
       parentRoute: typeof AppRoute
     }
-    '/app/devices': {
-      id: '/app/devices'
+    '/_app/devices': {
+      id: '/_app/devices'
       path: '/devices'
-      fullPath: '/app/devices'
+      fullPath: '/devices'
       preLoaderRoute: typeof AppDevicesRouteImport
       parentRoute: typeof AppRoute
     }
-    '/app/settings': {
-      id: '/app/settings'
+    '/_app/settings': {
+      id: '/_app/settings'
       path: '/settings'
-      fullPath: '/app/settings'
+      fullPath: '/settings'
       preLoaderRoute: typeof AppSettingsRouteImport
       parentRoute: typeof AppRoute
+    }
+    '/auth/callback': {
+      id: '/auth/callback'
+      path: '/auth/callback'
+      fullPath: '/auth/callback'
+      preLoaderRoute: typeof AuthCallbackRouteImport
+      parentRoute: typeof rootRouteImport
     }
   }
 }
@@ -155,9 +134,8 @@ const AppRouteChildren: AppRouteChildren = {
 const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
 
 const rootRouteChildren: RootRouteChildren = {
-  IndexRoute: IndexRoute,
   AppRoute: AppRouteWithChildren,
-  LoginRoute: LoginRoute,
+  AuthCallbackRoute: AuthCallbackRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

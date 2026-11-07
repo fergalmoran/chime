@@ -7,7 +7,9 @@ import { Card, CardContent } from "#/components/ui/card";
 import { api } from "#/lib/api";
 import { notificationsKey } from "#/lib/hooks";
 
-export const Route = createFileRoute("/app/")({ component: NotificationsPage });
+export const Route = createFileRoute("/_app/")({
+	component: NotificationsPage,
+});
 
 function NotificationsPage() {
 	const { data, isPending, isError } = useQuery({

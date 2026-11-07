@@ -5,7 +5,7 @@ import { Button } from "#/components/ui/button";
 import { Card, CardContent } from "#/components/ui/card";
 import { api } from "#/lib/api";
 
-export const Route = createFileRoute("/app/devices")({
+export const Route = createFileRoute("/_app/devices")({
 	component: DevicesPage,
 });
 
