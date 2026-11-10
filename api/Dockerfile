@@ -1,19 +1,19 @@
 # Chime API: ASP.NET Core on .NET 10, SQLite on the /data volume.
 # Build from the api/ directory:  docker build -t chime-api api
 
-FROM mcr.microsoft.com/dotnet/sdk:10.0-alpine AS build
+FROM mcr.microsoft.com/dotnet/sdk:11.0-alpine AS build
 WORKDIR /src
 
 # Restore first so the package layer is cached until a project file changes.
 COPY global.json ./
-COPY src/Chime.Api/Chime.Api.csproj src/Chime.Api/
-RUN dotnet restore src/Chime.Api/Chime.Api.csproj
+COPY src/api/chime-api.csproj src/api/
+RUN dotnet restore src/api/chime-api.csproj
 
 COPY src/ src/
-RUN dotnet publish src/Chime.Api/Chime.Api.csproj -c Release -o /app --no-restore /p:UseAppHost=false
+RUN dotnet publish src/api/chime-api.csproj -c Release -o /app --no-restore /p:UseAppHost=false
 
 # Alpine so the health check can use busybox wget; SQLite ships a musl build.
-FROM mcr.microsoft.com/dotnet/aspnet:10.0-alpine AS runtime
+FROM mcr.microsoft.com/dotnet/aspnet:11.0-alpine AS runtime
 WORKDIR /app
 
 # /data holds the SQLite database and the Data Protection key ring (which keeps sign-ins valid

@@ -2,6 +2,8 @@
 
   <PropertyGroup>
     <TargetFramework>net11.0</TargetFramework>
+    <AssemblyName>Chime.Api.Tests</AssemblyName>
+    <RootNamespace>Chime.Api.Tests</RootNamespace>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <IsPackable>false</IsPackable>
@@ -27,7 +29,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\src\Chime.Api\Chime.Api.csproj" />
+    <ProjectReference Include="..\api\chime-api.csproj" />
   </ItemGroup>
 
 </Project>

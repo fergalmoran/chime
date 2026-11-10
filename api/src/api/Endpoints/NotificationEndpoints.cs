@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore;
 using Chime.Api.Contracts;
 using Chime.Api.Data;
 using Chime.Api.Hubs;
+using Chime.Api.Services;
 
 namespace Chime.Api.Endpoints;
 
@@ -34,7 +35,8 @@ public static class NotificationEndpoints
         group.MapPost("/", CreateAsync);
 
         group.MapPost("/{id:guid}/dismiss", async Task<Results<NoContent, NotFound>> (
-            Guid id, ClaimsPrincipal principal, AppDbContext db, IHubContext<NotificationsHub, INotificationsClient> hub) =>
+            Guid id, ClaimsPrincipal principal, AppDbContext db, IHubContext<NotificationsHub, INotificationsClient> hub,
+            IBrowserPushQueue browserPush) =>
         {
             var userId = principal.GetUserId();
             var updated = await db.Notifications
@@ -43,6 +45,7 @@ public static class NotificationEndpoints
             if (updated == 0) return TypedResults.NotFound();
 
             await hub.Clients.User(userId).NotificationDismissed(id);
+            browserPush.FeedChanged(userId);
             return TypedResults.NoContent();
         });
 
@@ -65,6 +68,7 @@ public static class NotificationEndpoints
         ClaimsPrincipal principal,
         AppDbContext db,
         IHubContext<NotificationsHub, INotificationsClient> hub,
+        IBrowserPushQueue browserPush,
         TimeProvider clock)
     {
         var userId = principal.GetUserId();
@@ -121,6 +125,7 @@ public static class NotificationEndpoints
 
         var dto = NotificationDto.From(notification);
         await hub.Clients.User(userId).NotificationReceived(dto);
+        browserPush.FeedChanged(userId);
         return TypedResults.Created($"/api/notifications/{notification.Id}", dto);
     }
 }

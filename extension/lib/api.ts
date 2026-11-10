@@ -116,13 +116,19 @@ async function refresh(session: Session): Promise<Session | null> {
   return next;
 }
 
-async function request<T>(path: string, init: RequestInit = {}, retry = true): Promise<T> {
+/** The signed-in session, refreshing its access token first when it is about to expire. */
+export async function freshSession(): Promise<Session> {
   let session = await sessionItem.getValue();
   if (!session) throw new ApiError(401);
   if (session.expiresAt - Date.now() < 30_000) {
     session = await refresh(session);
     if (!session) throw new ApiError(401);
   }
+  return session;
+}
+
+async function request<T>(path: string, init: RequestInit = {}, retry = true): Promise<T> {
+  const session = await freshSession();
 
   const headers = new Headers(init.headers);
   headers.set('Authorization', `Bearer ${session.accessToken}`);
@@ -151,6 +157,22 @@ export const fetchNotifications = () =>
 
 export const dismissNotification = (id: string) =>
   request<void>(`/api/notifications/${id}/dismiss`, { method: 'POST' });
+
+/** The API's VAPID public key, or null when it doesn't offer Web Push. */
+export const fetchWebPushKey = () =>
+  request<{ publicKey: string }>('/api/web-push/key').then(
+    (r) => r.publicKey,
+    (err: unknown) => {
+      if (err instanceof ApiError && err.status === 404) return null;
+      throw err;
+    },
+  );
+
+export const saveWebPushSubscription = (deviceId: string, endpoint: string, p256dh: string, auth: string) =>
+  request<void>(`/api/devices/${encodeURIComponent(deviceId)}/web-push`, {
+    method: 'PUT',
+    body: JSON.stringify({ endpoint, p256dh, auth }),
+  });
 
 export async function setBadge(count: number) {
   const action = browser.action ?? browser.browserAction;

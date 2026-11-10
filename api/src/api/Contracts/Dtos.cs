@@ -14,6 +14,13 @@ public record DeviceDto(Guid Id, string Name, DevicePlatform Platform, DateTimeO
 
 public record PushTokenRequest([StringLength(4096, MinimumLength = 1)] string? Token);
 
+public record WebPushSubscriptionRequest(
+    [Required, StringLength(2048, MinimumLength = 1)] string Endpoint,
+    [Required, StringLength(200, MinimumLength = 1)] string P256dh,
+    [Required, StringLength(100, MinimumLength = 1)] string Auth);
+
+public record WebPushKeyResponse(string PublicKey);
+
 public record SendLinkRequest(
     [Required, StringLength(2048, MinimumLength = 1)] string Url,
     [StringLength(200)] string? Title);

@@ -26,6 +26,11 @@ public class Device
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
     public DateTimeOffset? LastSeenAt { get; set; }
     public string? PushToken { get; set; }
+
+    /// <summary>Web Push subscription of a browser extension (null when it has none).</summary>
+    public string? WebPushEndpoint { get; set; }
+    public string? WebPushP256dh { get; set; }
+    public string? WebPushAuth { get; set; }
 }
 
 public enum NotificationCategory

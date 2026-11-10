@@ -2,6 +2,8 @@
 
   <PropertyGroup>
     <TargetFramework>net11.0</TargetFramework>
+    <AssemblyName>Chime.Api</AssemblyName>
+    <RootNamespace>Chime.Api</RootNamespace>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <UserSecretsId>241d3339-9f48-4ce2-9b6a-bf9c393ac271</UserSecretsId>

@@ -28,6 +28,9 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : IdentityDbCo
             e.Property(d => d.Name).HasMaxLength(100);
             e.Property(d => d.Platform).HasConversion<string>().HasMaxLength(20);
             e.Property(d => d.PushToken).HasMaxLength(4096);
+            e.Property(d => d.WebPushEndpoint).HasMaxLength(2048);
+            e.Property(d => d.WebPushP256dh).HasMaxLength(200);
+            e.Property(d => d.WebPushAuth).HasMaxLength(100);
             e.HasOne(d => d.User).WithMany(u => u.Devices).HasForeignKey(d => d.UserId).OnDelete(DeleteBehavior.Cascade);
             e.HasIndex(d => d.UserId);
         });

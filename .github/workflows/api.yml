@@ -1,12 +1,12 @@
 # Tests the API, then builds its Docker image. Pull requests build the image to validate the
 # Dockerfile but don't publish; pushes to trunk publish `latest` (plus a commit-SHA tag), and
-# `v*` tags also publish version tags.
+# `api-v*` tags (scripts/release-api.sh) also publish version tags: api-v1.2.3 -> :1.2.3 and :1.2.
 name: API
 
 on:
   push:
     branches: [trunk]
-    tags: ["v*"]
+    tags: ["api-v*"]
     paths:
       - "api/**"
       - ".github/workflows/api.yml"
@@ -68,14 +68,25 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      # api-v1.2.3 -> 1.2.3 (metadata-action's semver parser doesn't know about the prefix).
+      - name: Version from tag
+        id: version
+        env:
+          REF_TYPE: ${{ github.ref_type }}
+          REF_NAME: ${{ github.ref_name }}
+        run: |
+          if [[ "$REF_TYPE" == "tag" && "$REF_NAME" == api-v* ]]; then
+            echo "version=${REF_NAME#api-v}" >> "$GITHUB_OUTPUT"
+          fi
+
       - id: meta
         uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302 # v6.2.0
         with:
           images: ${{ steps.image.outputs.name }}
           tags: |
             type=raw,value=latest,enable=${{ github.ref == 'refs/heads/trunk' }}
-            type=semver,pattern={{version}}
-            type=semver,pattern={{major}}.{{minor}}
+            type=semver,pattern={{version}},value=${{ steps.version.outputs.version }},enable=${{ steps.version.outputs.version != '' }}
+            type=semver,pattern={{major}}.{{minor}},value=${{ steps.version.outputs.version }},enable=${{ steps.version.outputs.version != '' }}
             type=sha,format=long
             type=ref,event=pr
 

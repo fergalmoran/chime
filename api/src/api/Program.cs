@@ -54,6 +54,11 @@ builder.Services.AddHostedService<RetentionService>();
 builder.Services.Configure<FirebaseOptions>(builder.Configuration.GetSection("Firebase"));
 builder.Services.AddHttpClient("Firebase", client => client.Timeout = TimeSpan.FromSeconds(15));
 builder.Services.AddSingleton<IMobileLinkSender, MobileLinkSender>();
+builder.Services.Configure<WebPushOptions>(builder.Configuration.GetSection("WebPush"));
+builder.Services.AddHttpClient<IWebPushSender, WebPushSender>(client => client.Timeout = TimeSpan.FromSeconds(15));
+builder.Services.AddSingleton<BrowserPushService>();
+builder.Services.AddSingleton<IBrowserPushQueue>(sp => sp.GetRequiredService<BrowserPushService>());
+builder.Services.AddHostedService(sp => sp.GetRequiredService<BrowserPushService>());
 
 var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? [];
 builder.Services.AddCors(options => options.AddDefaultPolicy(policy => policy
@@ -95,6 +100,7 @@ api.MapGroup("")
   .RequireExistingUser()
   .MapAccountEndpoints()
   .MapDeviceEndpoints()
+  .MapWebPushEndpoints()
   .MapNotificationEndpoints();
 
 app.MapHub<NotificationsHub>("/api/hubs/notifications");

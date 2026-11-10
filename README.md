@@ -27,7 +27,7 @@ Prerequisites: .NET 10 SDK, Bun, JDK 21 + Android SDK (API 37).
 
 ```bash
 # 1. API → https://chime.dev.fergl.ie:5002 (creates/migrates chime.db in Development)
-cd api && dotnet run --project src/Chime.Api
+cd api && dotnet run --project src/api
 
 # 2. Web → http://localhost:3000  (copy .env.example to .env to point at another API)
 cd web && bun install && bun run dev
@@ -106,7 +106,7 @@ browser. This uses Firebase Cloud Messaging (FCM), so the Android app doesn't ne
 5. Set `Firebase:ProjectId` in the API configuration. The Android Firebase project and API project must match. This is separate from the Google
    OAuth client ID; keep your existing Google sign-in settings.
 6. Restart the API. Development applies the included `DevicePushToken` migration automatically. For other
-   environments apply migrations explicitly: `cd api && dotnet ef database update -p src/Chime.Api`.
+   environments apply migrations explicitly: `cd api && dotnet ef database update -p src/api`.
 7. Rebuild/install the Android app, sign in, and enable **Receive links from desktop** / **Enable mobile
    notifications**. Wait until it says the phone is ready. This needs Google Play services and permission
    to show notifications; notification-listener access alone does not grant that permission.
@@ -135,7 +135,7 @@ For example, set this section in the API's `appsettings.Development.json`:
 ```
 
 Only the path belongs in appsettings, **never the contents of the private-key file**. An absolute path is
-unambiguous; relative paths resolve from the API content root (normally `api/src/Chime.Api`), not the
+unambiguous; relative paths resolve from the API content root (normally `api/src/api`), not the
 solution/workspace root. Thus `"CredentialsFilePath": "api-firebase.json"` looks beside the API's appsettings.
 The filename `api-firebase.json` is gitignored as an extra safeguard.
 
@@ -144,7 +144,7 @@ Alternatively, store the path in .NET user-secrets (the API already has a `UserS
 ```sh
 cd api
 dotnet user-secrets set "Firebase:CredentialsFilePath" "/absolute/path/to/api-firebase.json" \
-  --project src/Chime.Api
+  --project src/api
 ```
 
 User-secrets load automatically in Development. In production, mount the credential as a read-only secret
@@ -160,6 +160,36 @@ If neither setting is present, the API uses Google's Application Default Credent
 workload identity where supported. `GOOGLE_APPLICATION_CREDENTIALS` remains an optional ADC mechanism, not a
 requirement for the .NET-configured file path.
 
+## Instant delivery to the browser extension
+
+The extension refreshes as soon as the feed changes, instead of waiting for its poll:
+
+- **Chrome** (MV3 service worker) subscribes to **Web Push**. The API sends a content-free "feed changed"
+  signal to each subscribed browser when a notification arrives or is dismissed; the extension then fetches its
+  feed, so notification content never passes through the push service.
+- **Firefox** extensions can't use Web Push yet ([bug 1378096](https://bugzilla.mozilla.org/show_bug.cgi?id=1378096)),
+  so the Firefox build is MV2 with a persistent background page that holds a SignalR connection to
+  `/api/hubs/notifications`.
+
+Both keep polling as a safety net: every minute when no live channel is up, every 15 minutes when one is.
+
+Web Push needs a VAPID key pair in the API configuration (`WebPush:PublicKey`, `WebPush:PrivateKey`, both
+base64url). Without it, `GET /api/web-push/key` returns `404` and Chrome falls back to polling. Generate a pair
+and store it without printing the private key:
+
+```sh
+cd api/src/api
+openssl ecparam -name prime256v1 -genkey -noout -out vapid.pem
+b64u() { base64 -w0 | tr '+/' '-_' | tr -d '='; }
+dotnet user-secrets set "WebPush:PublicKey"  "$(openssl ec -in vapid.pem -pubout -outform DER | tail -c 65 | b64u)"
+dotnet user-secrets set "WebPush:PrivateKey" "$(openssl ec -in vapid.pem -outform DER | head -c 39 | tail -c 32 | b64u)"
+shred -u vapid.pem
+```
+
+In production set `WebPush__PublicKey` and `WebPush__PrivateKey` instead. Changing the pair makes existing
+subscriptions fail until each extension re-checks with the API (at most a day later). `WebPush:Subject` (default
+`https://chime.ferg.al`) is the contact URL sent to push services.
+
 ## API overview
 
 | Endpoint | Purpose |
@@ -170,6 +200,8 @@ requirement for the .NET-configured file path.
 | `DELETE /api/account` | Permanently delete the account and all its data; outstanding tokens stop working immediately |
 | `GET/POST /api/devices`, `DELETE /api/devices/{id}` | Registered phones / browsers |
 | `PUT /api/devices/{id}/push-token` | Android registers an FCM token (`{"token":null}` unregisters it) |
+| `GET /api/web-push/key` | VAPID public key for browser Web Push (`404` when not configured) |
+| `PUT/DELETE /api/devices/{id}/web-push` | A browser extension saves (`{"endpoint","p256dh","auth"}`) or removes its Web Push subscription |
 | `POST /api/devices/{id}/links` | Send `{"url":"https://…","title":"…"}` to an owned Android phone via FCM |
 | `GET /api/notifications?before=&limit=&includeDismissed=` | Paged feed (newest first) |
 | `POST /api/notifications` | Called by the phone. `201` stored, `200` duplicate (`externalKey`), `204` filtered by settings |
@@ -191,7 +223,7 @@ The API and web app each build an image (amd64), published to GHCR by GitHub Act
 
 | Image | Listens on | Notes |
 | --- | --- | --- |
-| `ghcr.io/fergalmoran/chime-api` | `8080` | Mount a volume at **`/data`**: it holds the SQLite database and the Data Protection key ring (without it, every restart signs everyone out). Migrations run on startup. Set `Authentication__Google__ClientIds__0`, `Firebase__ProjectId` (defaults from `appsettings.json`) and `Firebase__CredentialsFilePath` (mount the service-account key, e.g. as a secret). Forwarded headers are trusted, for running behind Traefik. |
+| `ghcr.io/fergalmoran/chime-api` | `8080` | Mount a volume at **`/data`**: it holds the SQLite database and the Data Protection key ring (without it, every restart signs everyone out). Migrations run on startup. Set `Authentication__Google__ClientIds__0`, `Firebase__ProjectId` (defaults from `appsettings.json`) and `Firebase__CredentialsFilePath` (mount the service-account key, e.g. as a secret). Set `WebPush__PublicKey` and `WebPush__PrivateKey` for instant delivery to Chrome (see above). Forwarded headers are trusted, for running behind Traefik. |
 | `ghcr.io/fergalmoran/chime-web` | `3000` | `VITE_API_URL` (default `https://chime.ferg.al`) and `VITE_GOOGLE_CLIENT_ID` are compiled in: build args, overridable via repository variables of the same name. |
 
 Build and run locally:
@@ -207,7 +239,7 @@ docker build -t chime-web --build-arg VITE_API_URL=http://localhost:8080 web && 
 - **Production web server:** `cd web && bun run build && bun server.js` (what the image runs; `PORT`, default 3000).
 - **Tests:** `cd api && dotnet test` · `cd android && ./gradlew testDebugUnitTest lintDebug` ·
   `cd web && bun test && bun run check && bunx tsc --noEmit` · `cd extension && bun test && bun run compile`
-- **Migrations:** `cd api && dotnet ef migrations add <Name> -p src/Chime.Api -o Data/Migrations`
+- **Migrations:** `cd api && dotnet ef migrations add <Name> -p src/api -o Data/Migrations`
 - **Dev API URL:** every client defaults to `https://chime.dev.fergl.ie:5002` (Kestrel endpoint in
   `appsettings.Development.json`). Override with `VITE_API_URL` (web), the API URL field (extension/Android), or
   `DEFAULT_API_URL` in `android/app/build.gradle.kts`. Debug Android builds still allow cleartext HTTP for LAN testing.

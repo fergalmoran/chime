@@ -1,12 +1,15 @@
 import { expect, mock, test } from "bun:test";
 
 let alarmListener;
+let realtimeHandlers;
+const alarms = new Map();
 let checkpoint = null;
 let items = [];
 const alerts = [];
 let currentTab;
+let fetchImpl = async () => items;
 const api = {
-	fetchNotifications: async () => items,
+	fetchNotifications: () => fetchImpl(),
 	GOOGLE_CLIENT_ID: undefined,
 	lastSeenItem: {
 		getValue: async () => checkpoint,
@@ -17,6 +20,12 @@ const api = {
 };
 
 mock.module("../lib/api", () => api);
+mock.module("../lib/realtime", () => ({
+	createRealtime: (handlers) => {
+		realtimeHandlers = handlers;
+		return { start: async () => {}, stop: async () => {} };
+	},
+}));
 mock.module("../lib/google", () => ({
 	googleRedirectUrl: () => "",
 	signInWithGoogle: async () => {},
@@ -24,7 +33,8 @@ mock.module("../lib/google", () => ({
 mock.module("wxt/browser", () => ({
 	browser: {
 		alarms: {
-			create: () => {},
+			create: (name, info) => { alarms.set(name, { name, ...info }); },
+			get: async (name) => alarms.get(name),
 			onAlarm: { addListener: (listener) => { alarmListener = listener; } },
 		},
 		runtime: {
@@ -35,7 +45,7 @@ mock.module("wxt/browser", () => ({
 		tabs: { query: async () => currentTab ? [currentTab] : [] },
 	},
 }));
-globalThis.defineBackground = (start) => start;
+globalThis.defineBackground = (definition) => definition.main;
 
 // Wait for the fire-and-forget alarm handler to finish its storage/API work.
 const settle = () => new Promise((resolve) => setTimeout(resolve, 0));
@@ -60,6 +70,38 @@ test("first arrival after an empty poll alerts, more than three arrivals aren't 
 	alarmListener({ name: "chime-poll" });
 	await settle();
 	expect(alerts).toHaveLength(5);
+});
+
+test("a change signalled mid-poll triggers one more poll instead of being dropped", async () => {
+	let release;
+	let fetches = 0;
+	fetchImpl = async () => {
+		fetches++;
+		if (fetches === 1) await new Promise((resolve) => { release = resolve; });
+		return items;
+	};
+	try {
+		const first = realtimeHandlers.onChange();
+		await settle();
+		const second = realtimeHandlers.onChange();
+		const third = realtimeHandlers.onChange();
+		release();
+		await Promise.all([first, second, third]);
+		expect(fetches).toBe(2);
+	} finally {
+		fetchImpl = async () => items;
+	}
+});
+
+test("the fallback poll slows down while a live channel is up", async () => {
+	await settle();
+	expect(alarms.get("chime-poll")?.periodInMinutes).toBe(1);
+	realtimeHandlers.onStatus(true);
+	await settle();
+	expect(alarms.get("chime-poll")?.periodInMinutes).toBe(15);
+	realtimeHandlers.onStatus(false);
+	await settle();
+	expect(alarms.get("chime-poll")?.periodInMinutes).toBe(1);
 });
 
 test("Send to mobile reads the active page's URL and title", async () => {
