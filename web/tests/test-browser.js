@@ -1,34 +1,14 @@
-// Minimal browser globals for testing the web app's lib modules under bun.
-
-export function createStorage(initial = {}) {
-	const data = new Map(Object.entries(initial));
-	return {
-		getItem: (k) => (data.has(k) ? data.get(k) : null),
-		setItem: (k, v) => data.set(k, String(v)),
-		removeItem: (k) => data.delete(k),
-		clear: () => data.clear(),
-		get size() {
-			return data.size;
-		},
-	};
-}
+// Helpers for testing the web app's lib modules. The DOM itself (window, storage, location) is happy-dom from
+// the test preload (tests/dom.js), which also resets storage and fetch after each test.
 
 /**
- * Installs window/localStorage/sessionStorage and a scripted fetch.
- * `routes` maps "METHOD /path" to a handler (request, call) => Response | object.
+ * Scripts fetch and records full-page redirects. `routes` maps "METHOD /path" to a handler
+ * (call, n) => Response | value, where n counts calls to that path.
  */
-export function installBrowser({ routes = {}, origin = "https://chime.test" } = {}) {
+export function installBrowser({ routes = {} } = {}) {
 	const calls = [];
-	const localStorage = createStorage();
-	const sessionStorage = createStorage();
 	const assigned = [];
-	globalThis.window = {
-		localStorage,
-		sessionStorage,
-		location: { origin, assign: (url) => assigned.push(url) },
-	};
-	globalThis.localStorage = localStorage;
-	globalThis.sessionStorage = sessionStorage;
+	window.location.assign = (url) => assigned.push(String(url));
 	globalThis.fetch = async (input, init = {}) => {
 		const url = new URL(String(input));
 		const method = init.method ?? "GET";
@@ -56,8 +36,5 @@ export function json(status, body) {
 	});
 }
 
-export function uninstallBrowser() {
-	delete globalThis.window;
-	delete globalThis.localStorage;
-	delete globalThis.sessionStorage;
-}
+/** Kept for symmetry in afterEach blocks; the preload does the real reset. */
+export function uninstallBrowser() {}

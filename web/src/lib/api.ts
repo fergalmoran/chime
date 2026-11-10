@@ -78,10 +78,25 @@ function writeTokens(tokens: Tokens | null) {
 	for (const l of listeners) l();
 }
 
+/** Another tab signed in or out: let this tab's subscribers re-read the tokens. */
+function onStorage(event: StorageEvent) {
+	if (event.key === TOKEN_KEY || event.key === null) {
+		for (const l of listeners) l();
+	}
+}
+
 export const authStore = {
 	subscribe(listener: () => void) {
+		if (listeners.size === 0 && typeof window !== "undefined") {
+			window.addEventListener("storage", onStorage);
+		}
 		listeners.add(listener);
-		return () => listeners.delete(listener);
+		return () => {
+			listeners.delete(listener);
+			if (listeners.size === 0 && typeof window !== "undefined") {
+				window.removeEventListener("storage", onStorage);
+			}
+		};
 	},
 	isAuthenticated: () => readTokens() !== null,
 	logout: () => writeTokens(null),

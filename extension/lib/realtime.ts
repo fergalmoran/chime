@@ -22,8 +22,10 @@ export interface RealtimeHandlers {
   onStatus: (live: boolean) => void;
 }
 
-export function createRealtime(handlers: RealtimeHandlers): Realtime {
-  const channel = import.meta.env.MANIFEST_VERSION === 3 ? webPushChannel(handlers) : hubChannel(handlers);
+export function createRealtime(
+  handlers: RealtimeHandlers,
+  channel: Realtime = import.meta.env.MANIFEST_VERSION === 3 ? webPushChannel(handlers) : hubChannel(handlers),
+): Realtime {
   // Startup and sign-in can both start the channel at once; run start/stop one at a time.
   let queue = Promise.resolve();
   const serial = (fn: () => Promise<void>) => () => (queue = queue.then(fn, fn));
@@ -36,7 +38,8 @@ interface ExtendableEvent extends Event {
   waitUntil(promise: Promise<unknown>): void;
 }
 
-interface WorkerScope {
+/** The parts of the service worker's global scope Web Push needs (injectable for tests). */
+export interface WorkerScope {
   registration: ServiceWorkerRegistration;
   addEventListener(type: 'push' | 'pushsubscriptionchange', listener: (event: ExtendableEvent) => void): void;
 }
@@ -53,9 +56,10 @@ const registrationItem = storage.defineItem<Registration | null>('local:webPushR
 /** Re-verify with the API once a day in case it rotated its VAPID key or forgot the subscription. */
 const RECHECK_MS = 24 * 60 * 60 * 1000;
 
-function webPushChannel({ onChange, onStatus }: RealtimeHandlers): Realtime {
-  const worker = globalThis as unknown as WorkerScope;
-
+export function webPushChannel(
+  { onChange, onStatus }: RealtimeHandlers,
+  worker: WorkerScope = globalThis as unknown as WorkerScope,
+): Realtime {
   // Service worker events must be registered synchronously during the worker's first evaluation.
   worker.addEventListener('push', (event) => event.waitUntil(onChange()));
   worker.addEventListener('pushsubscriptionchange', (event) =>
@@ -126,7 +130,7 @@ function toBase64Url(bytes: Uint8Array) {
 const MAX_RETRY_MS = 60_000;
 const retryDelay = (attempt: number) => Math.min(MAX_RETRY_MS, 1000 * 2 ** attempt);
 
-function hubChannel({ onChange, onStatus }: RealtimeHandlers): Realtime {
+export function hubChannel({ onChange, onStatus }: RealtimeHandlers): Realtime {
   let connection: HubConnection | undefined;
   let apiUrl: string | undefined;
   let retryTimer: ReturnType<typeof setTimeout> | undefined;

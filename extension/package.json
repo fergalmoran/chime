@@ -13,7 +13,8 @@
     "zip": "CHIME_STORE_BUILD=1 wxt zip",
     "zip:firefox": "wxt zip -b firefox",
     "compile": "tsc --noEmit",
-    "postinstall": "wxt prepare"
+    "postinstall": "wxt prepare",
+    "test": "bun test --isolate"
   },
   "dependencies": {
     "@microsoft/signalr": "^10.0.11",

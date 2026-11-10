@@ -1,10 +1,10 @@
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import { X } from "lucide-react";
 import { Badge } from "#/components/ui/badge";
 import { Button } from "#/components/ui/button";
 import { Card, CardContent } from "#/components/ui/card";
-import { api } from "#/lib/api";
+import { api, type NotificationPage } from "#/lib/api";
 import { notificationsKey } from "#/lib/hooks";
 
 export const Route = createFileRoute("/_app/")({
@@ -16,7 +16,18 @@ function NotificationsPage() {
 		queryKey: notificationsKey,
 		queryFn: () => api.notifications(),
 	});
-	const dismiss = useMutation({ mutationFn: api.dismissNotification });
+	const queryClient = useQueryClient();
+	const dismiss = useMutation({
+		mutationFn: api.dismissNotification,
+		// Don't wait for the live hub's NotificationDismissed: it may not be connected.
+		onSuccess: (_, id) =>
+			queryClient.setQueryData<NotificationPage>(notificationsKey, (page) =>
+				page ? { ...page, items: page.items.filter((n) => n.id !== id) } : page,
+			),
+		// e.g. 404 when it was dismissed or purged elsewhere: resync with the server.
+		onError: () =>
+			queryClient.invalidateQueries({ queryKey: notificationsKey }),
+	});
 
 	if (isPending) return <p className="text-muted-foreground">Loading…</p>;
 	if (isError)

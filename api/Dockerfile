@@ -10,7 +10,11 @@ COPY src/api/chime-api.csproj src/api/
 RUN dotnet restore src/api/chime-api.csproj
 
 COPY src/ src/
-RUN dotnet publish src/api/chime-api.csproj -c Release -o /app --no-restore /p:UseAppHost=false
+# The release version (api-v1.2.3 -> 1.2.3), baked into the assembly and reported by GET /api/health.
+# Declared after restore so changing it doesn't invalidate the package layer.
+ARG VERSION=0.0.0-dev
+RUN dotnet publish src/api/chime-api.csproj -c Release -o /app --no-restore /p:UseAppHost=false \
+    "/p:Version=${VERSION}"
 
 # Alpine so the health check can use busybox wget; SQLite ships a musl build.
 FROM mcr.microsoft.com/dotnet/aspnet:11.0-alpine AS runtime

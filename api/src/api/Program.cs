@@ -91,7 +91,8 @@ app.UseAuthorization();
 // (e.g. https://chime.ferg.al/api/* -> API, everything else -> web).
 var api = app.MapGroup("/api");
 
-api.MapGet("/health", () => TypedResults.Ok(new {status = "ok"})).AllowAnonymous();
+api.MapGet("/health", () => TypedResults.Ok(new {status = "ok", version = Chime.Api.BuildInfo.Version})).AllowAnonymous();
+api.MapGroup("").AllowAnonymous().MapPingEndpoints();
 
 api.MapGroup("/auth").WithTags("Auth").MapGoogleAuth();
 

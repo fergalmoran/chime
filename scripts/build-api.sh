@@ -41,6 +41,10 @@ if [[ -n "$(git -C "$repo_root" status --porcelain -- api)" ]]; then
     echo "warning: api/ has uncommitted changes; the :$sha tag won't match the commit exactly" >&2
 fi
 
+# Version baked into the binary (GET /api/health): --tag v0.2.0 -> 0.2.0, otherwise 0.0.0-sha.<sha>.
+version="0.0.0-sha.$sha"
+[[ "$extra_tag" =~ ^v?[0-9]+\.[0-9]+\.[0-9]+ ]] && version="${extra_tag#v}"
+
 tags=("$image:$sha" "$image:latest")
 [[ -n "$extra_tag" ]] && tags+=("$image:$extra_tag")
 
@@ -48,7 +52,8 @@ tags=("$image:$sha" "$image:latest")
 build_args=(--platform "$platform"
     --label "org.opencontainers.image.source=https://github.com/fergalmoran/chime"
     --label "org.opencontainers.image.revision=$(git -C "$repo_root" rev-parse HEAD)"
-    --label "org.opencontainers.image.created=$(date -u +%Y-%m-%dT%H:%M:%SZ)")
+    --label "org.opencontainers.image.created=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+    --build-arg "VERSION=$version")
 for t in "${tags[@]}"; do build_args+=(-t "$t"); done
 
 echo "==> Building $image ($sha, $platform)"
