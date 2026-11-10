@@ -1,7 +1,8 @@
-# Type-checks, lints and tests the web app, then builds its Docker image. Pull requests build the
-# image to validate the Dockerfile but don't publish; pushes to trunk publish `latest` (plus a
-# commit-SHA tag), and `web-v*` tags (scripts/release-web.sh) also publish version tags:
-# web-v1.2.3 -> :1.2.3 and :1.2.
+# Type-checks, lints and tests the web app, then builds its Docker image. Images are only published
+# for release tags: pushing `web-v1.2.3` (scripts/release-web.sh) publishes :1.2.3, :1.2, :latest and
+# :sha-<commit> (pre-releases like web-v1.2.3-rc.1 get only :1.2.3-rc.1 and the SHA tag). Pushes to
+# trunk and pull requests that touch web/ run the checks only. A manual run builds and publishes only
+# the :sha-<commit> tag.
 #
 # VITE_API_URL / VITE_GOOGLE_CLIENT_ID are compiled into the bundle. They default to production
 # in the Dockerfile; override them with repository variables of the same name if they change.
@@ -11,7 +12,7 @@ on:
   push:
     branches: [trunk]
     tags: ["web-v*"]
-    paths:
+    paths: # applies to trunk pushes only; GitHub ignores path filters for tag pushes
       - "web/**"
       - ".github/workflows/web.yml"
   pull_request:
@@ -52,6 +53,9 @@ jobs:
   image:
     name: Docker image
     needs: test
+    # Release tags and manual runs only. Trunk pushes and pull requests just run the tests, so nothing
+    # that watches the registry ever sees an unreleased image.
+    if: github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref_type == 'tag')
     runs-on: avrea-ubuntu-latest-2-vcpu
     timeout-minutes: 20
     permissions:
@@ -92,7 +96,7 @@ jobs:
         with:
           images: ${{ steps.image.outputs.name }}
           tags: |
-            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/trunk' }}
+            type=raw,value=latest,enable=${{ steps.version.outputs.version != '' && !contains(steps.version.outputs.version, '-') }}
             type=semver,pattern={{version}},value=${{ steps.version.outputs.version }},enable=${{ steps.version.outputs.version != '' }}
             type=semver,pattern={{major}}.{{minor}},value=${{ steps.version.outputs.version }},enable=${{ steps.version.outputs.version != '' }}
             type=sha,format=long

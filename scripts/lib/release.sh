@@ -101,7 +101,7 @@ release_watch() {
 
 # release_image_main <api|web> "$@": the whole of release-api.sh / release-web.sh. Tags HEAD as
 # <component>-vX.Y.Z; the push makes .github/workflows/<component>.yml test the app and publish
-# ghcr.io/<owner>/chime-<component>:X.Y.Z and :X.Y (plus :sha-<commit>).
+# ghcr.io/<owner>/chime-<component>:X.Y.Z, :X.Y and :latest (plus :sha-<commit>).
 release_image_main() {
     local component="$1"; shift
     while [[ $# -gt 0 ]]; do
@@ -111,7 +111,7 @@ release_image_main() {
                 cat <<HELP
 Releases the $component Docker image: tags HEAD as $component-v<version> and pushes the tag. GitHub Actions
 (.github/workflows/$component.yml) then tests it and publishes ghcr.io/<owner>/chime-$component:<version>
-and :<major>.<minor>. HEAD must be clean and already pushed to origin.
+and :<major>.<minor> and :latest. HEAD must be clean and already pushed to origin.
 
   scripts/release-$component.sh [--major | --minor | --patch | --version X.Y.Z] [--no-watch] [--yes]
 
@@ -138,6 +138,5 @@ HELP
 ==> Done: $RELEASE_TAG
     Published: $image:$RELEASE_VERSION
 DONE
-    [[ "$RELEASE_VERSION" == *-* ]] || echo "               $image:$minor"
-    echo "    Deploy it by pointing the server at one of those tags (or :latest, which trunk already updated)."
+    [[ "$RELEASE_VERSION" == *-* ]] || printf '               %s\n' "$image:$minor" "$image:latest"
 }

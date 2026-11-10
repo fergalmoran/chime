@@ -1,7 +1,7 @@
 # Chime
 
-[![API](https://github.com/fergalmoran/chime/actions/workflows/api.yml/badge.svg?branch=trunk)](https://github.com/fergalmoran/chime/actions/workflows/api.yml?query=branch%3Atrunk)
-[![Web](https://github.com/fergalmoran/chime/actions/workflows/web.yml/badge.svg?branch=trunk)](https://github.com/fergalmoran/chime/actions/workflows/web.yml?query=branch%3Atrunk)
+[![API](https://github.com/fergalmoran/chime/actions/workflows/api.yml/badge.svg)](https://github.com/fergalmoran/chime/actions/workflows/api.yml)
+[![Web](https://github.com/fergalmoran/chime/actions/workflows/web.yml/badge.svg)](https://github.com/fergalmoran/chime/actions/workflows/web.yml)
 [![Android](https://github.com/fergalmoran/chime/actions/workflows/android.yml/badge.svg)](https://github.com/fergalmoran/chime/actions/workflows/android.yml)
 [![Android release](https://img.shields.io/github/v/release/fergalmoran/chime?filter=android-v*&label=android&sort=semver)](https://github.com/fergalmoran/chime/releases)
 
@@ -223,8 +223,10 @@ the API and everything else to the web app. Clients use the origin as their API 
 ## Docker
 
 The API and web app each build an image (amd64), published to GHCR by GitHub Actions
-(`.github/workflows/api.yml`, `web.yml`). Pull requests build without publishing; pushes to `trunk` publish
-`latest` and a commit-SHA tag; `v*` tags also publish version tags.
+(`.github/workflows/api.yml`, `web.yml`), only when a release tag is pushed. `scripts/release-api.sh` and
+`scripts/release-web.sh` (`--major` / `--minor` / `--patch`) push `api-vX.Y.Z` / `web-vX.Y.Z`, which publish
+`:X.Y.Z`, `:X.Y`, `:latest` and a commit-SHA tag. Pushes to `trunk` and pull requests that touch `api/` or `web/`
+run the tests only, so auto-updating deployments never see an unreleased image. `scripts/build-api.sh` / `scripts/build-web.sh` build and push from your machine.
 
 | Image | Listens on | Notes |
 | --- | --- | --- |

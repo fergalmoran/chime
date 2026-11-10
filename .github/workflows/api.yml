@@ -1,13 +1,14 @@
-# Tests the API, then builds its Docker image. Pull requests build the image to validate the
-# Dockerfile but don't publish; pushes to trunk publish `latest` (plus a commit-SHA tag), and
-# `api-v*` tags (scripts/release-api.sh) also publish version tags: api-v1.2.3 -> :1.2.3 and :1.2.
+# Tests the API, then builds its Docker image. Images are only published for release tags: pushing
+# `api-v1.2.3` (scripts/release-api.sh) publishes :1.2.3, :1.2, :latest and :sha-<commit> (pre-releases
+# like api-v1.2.3-rc.1 get only :1.2.3-rc.1 and the SHA tag). Pushes to trunk and pull requests that touch
+# api/ run the tests only. A manual run builds and publishes only the :sha-<commit> tag.
 name: API
 
 on:
   push:
     branches: [trunk]
     tags: ["api-v*"]
-    paths:
+    paths: # applies to trunk pushes only; GitHub ignores path filters for tag pushes
       - "api/**"
       - ".github/workflows/api.yml"
   pull_request:
@@ -44,6 +45,9 @@ jobs:
   image:
     name: Docker image
     needs: test
+    # Release tags and manual runs only. Trunk pushes and pull requests just run the tests, so nothing
+    # that watches the registry ever sees an unreleased image.
+    if: github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref_type == 'tag')
     runs-on: avrea-ubuntu-latest-2-vcpu
     timeout-minutes: 20
     permissions:
@@ -84,7 +88,7 @@ jobs:
         with:
           images: ${{ steps.image.outputs.name }}
           tags: |
-            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/trunk' }}
+            type=raw,value=latest,enable=${{ steps.version.outputs.version != '' && !contains(steps.version.outputs.version, '-') }}
             type=semver,pattern={{version}},value=${{ steps.version.outputs.version }},enable=${{ steps.version.outputs.version != '' }}
             type=semver,pattern={{major}}.{{minor}},value=${{ steps.version.outputs.version }},enable=${{ steps.version.outputs.version != '' }}
             type=sha,format=long
