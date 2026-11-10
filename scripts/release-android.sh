@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Releases the Android app: tags HEAD as android-v<version>, pushes the tag, and waits for the
-# Android workflow (.github/workflows/android.yml) to build the signed .aab and attach it to a GitHub release.
+# Android workflow (.github/workflows/android.yml) to build the signed .aab and .apk, publish the .aab to the
+# Google Play alpha (closed testing) track, and attach both to a GitHub release.
 #
 #   scripts/release-android.sh [--version 0.2.0 | --bump patch|minor|major] [--set-secrets] [--no-watch] [--yes]
 #
@@ -9,8 +10,9 @@
 # --set-secrets uploads the CI secrets from this machine before tagging:
 #   ~/.config/chime/upload-keystore.jks + .env  ->  CHIME_UPLOAD_KEYSTORE_BASE64 / CHIME_UPLOAD_KEYSTORE_PASSWORD
 #   android/app/google-services.json            ->  CHIME_GOOGLE_SERVICES_JSON_BASE64
+#   ~/.config/chime/play-service-account.json   ->  CHIME_PLAY_SERVICE_ACCOUNT_JSON (or set CHIME_PLAY_SERVICE_ACCOUNT)
 # --secrets-only does just that and stops. Rerun it whenever the keystore or google-services.json changes.
-# When the build passes, the .aab is downloaded to android/dist/; upload it in Play Console.
+# When the build passes, the .aab and .apk are downloaded to android/dist/.
 set -euo pipefail
 
 here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -33,7 +35,7 @@ while [[ $# -gt 0 ]]; do
         --secrets-only) set_secrets=1; tag_requested=0; shift ;;
         --no-watch) watch=0; shift ;;
         -y|--yes) assume_yes=1; shift ;;
-        -h|--help) sed -n '2,13p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+        -h|--help) sed -n '2,15p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
         *) die "unknown argument: $1 (see --help)" ;;
     esac
 done
@@ -42,7 +44,8 @@ command -v gh >/dev/null || die "gh isn't installed"
 gh auth status >/dev/null 2>&1 || die "gh isn't logged in: run 'gh auth login'"
 repo="$(gh repo view --json nameWithOwner -q .nameWithOwner)"
 workflow="android.yml"
-secrets=(CHIME_UPLOAD_KEYSTORE_BASE64 CHIME_UPLOAD_KEYSTORE_PASSWORD CHIME_GOOGLE_SERVICES_JSON_BASE64)
+secrets=(CHIME_UPLOAD_KEYSTORE_BASE64 CHIME_UPLOAD_KEYSTORE_PASSWORD CHIME_GOOGLE_SERVICES_JSON_BASE64
+    CHIME_PLAY_SERVICE_ACCOUNT_JSON)
 
 # --- Secrets --------------------------------------------------------------------------------------
 if (( set_secrets )); then
@@ -50,8 +53,11 @@ if (( set_secrets )); then
     keystore="${CHIME_KEYSTORE_PATH:-$config_dir/upload-keystore.jks}"
     env_file="$config_dir/upload-keystore.env"
     google_services="android/app/google-services.json"
+    play_account="${CHIME_PLAY_SERVICE_ACCOUNT:-$config_dir/play-service-account.json}"
     [[ -f "$keystore" ]] || die "$keystore is missing (android/scripts/release-build.sh creates it on first run)"
     [[ -f "$google_services" ]] || die "$google_services is missing"
+    [[ -f "$play_account" ]] || die "$play_account is missing: create a service account key for Play publishing (see .github/workflows/android.yml)"
+    grep -q '"type": *"service_account"' "$play_account" || die "$play_account isn't a service account key"
     if [[ -z "${CHIME_KEYSTORE_PASSWORD:-}" ]]; then
         [[ -f "$env_file" ]] || die "no keystore password: set CHIME_KEYSTORE_PASSWORD or create $env_file"
         # shellcheck source=/dev/null
@@ -63,6 +69,7 @@ if (( set_secrets )); then
     base64 -w0 "$keystore" | gh secret set CHIME_UPLOAD_KEYSTORE_BASE64 -R "$repo"
     printf '%s' "$CHIME_KEYSTORE_PASSWORD" | gh secret set CHIME_UPLOAD_KEYSTORE_PASSWORD -R "$repo"
     base64 -w0 "$google_services" | gh secret set CHIME_GOOGLE_SERVICES_JSON_BASE64 -R "$repo"
+    gh secret set CHIME_PLAY_SERVICE_ACCOUNT_JSON -R "$repo" < "$play_account"
 fi
 (( tag_requested )) || exit 0
 
@@ -127,13 +134,12 @@ done
 gh run watch "$run_id" -R "$repo" --exit-status || die "build failed: gh run view $run_id -R $repo --log-failed"
 
 mkdir -p android/dist
-gh release download "$tag" -R "$repo" -p '*.aab' -D android/dist --clobber
+gh release download "$tag" -R "$repo" -p '*.aab' -p '*.apk' -D android/dist --clobber
 
 cat <<EOF
 
 ==> Done: $tag
     Release: https://github.com/$repo/releases/tag/$tag
-    Bundle:  $(ls -t android/dist/*.aab | head -1)
-
-Upload it in Play Console -> Test and release -> (Internal testing) -> Create new release.
+    Bundle:  $(ls -t android/dist/*.aab | head -1)  (published to Play: ${CHIME_PLAY_TRACK:-alpha} track)
+    APK:     $(ls -t android/dist/*.apk | head -1)  (sideload; upload-key signed)
 EOF

@@ -1,17 +1,26 @@
-# Builds the signed Android release bundle (.aab) with android/scripts/release-build.sh.
+# Builds the signed Android release bundle (.aab), a signed .apk and the R8 mapping file with
+# android/scripts/release-build.sh, and publishes the bundle to Google Play.
 #
-# - Pushing an `android-v*` tag (see scripts/release-android.sh) builds that version and attaches the
-#   .aab to a GitHub release for the tag.
-# - Running it by hand (workflow_dispatch) builds an .aab as a workflow artifact only.
+# - Pushing an `android-v*` tag (see scripts/release-android.sh) builds that version, uploads the .aab
+#   (with its mapping file) to the Play *alpha* (closed testing) track, and attaches the .aab and .apk to
+#   a GitHub release for the tag.
+# - Running it by hand (workflow_dispatch) builds them as a workflow artifact, and publishes to Play only
+#   if you tick "publish_to_play".
 #
-# Upload the .aab to Play Console yourself; this workflow doesn't publish to Play.
+# The .apk is signed with the upload key, not Play's app signing key: it's for sideloading, and can't be
+# installed over a Play-installed copy (or vice versa) without uninstalling first.
 #
 # Required repository secrets (scripts/release-android.sh --set-secrets uploads them from your machine):
 #   CHIME_UPLOAD_KEYSTORE_BASE64       base64 of the Play upload keystore (~/.config/chime/upload-keystore.jks)
 #   CHIME_UPLOAD_KEYSTORE_PASSWORD     its password (~/.config/chime/upload-keystore.env)
 #   CHIME_GOOGLE_SERVICES_JSON_BASE64  base64 of android/app/google-services.json (gitignored)
-# Optional repository variable:
+#   CHIME_PLAY_SERVICE_ACCOUNT_JSON    Google Cloud service account key (JSON) with release access to the
+#                                      app in Play Console (~/.config/chime/play-service-account.json)
+# Optional repository variables:
 #   CHIME_RELEASE_API_URL              default server URL baked into the app (defaults to https://chime.ferg.al)
+#   CHIME_PLAY_TRACK                   Play track to publish to (defaults to alpha)
+#   CHIME_PLAY_RELEASE_STATUS          completed (default) or draft. Use draft until the app's first
+#                                      release has been reviewed: Play rejects anything else for a draft app.
 name: Android
 
 on:
@@ -23,6 +32,11 @@ on:
         description: "Version name (blank: latest android-v* tag, else 0.1.0)"
         required: false
         type: string
+      publish_to_play:
+        description: "Also publish the bundle to Google Play"
+        required: false
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -33,11 +47,12 @@ concurrency:
 
 jobs:
   build:
-    name: Build release bundle
+    name: Build release bundle and APK
     runs-on: ubuntu-latest
     timeout-minutes: 30
     outputs:
-      aab_name: ${{ steps.build.outputs.aab_name }}
+      base_name: ${{ steps.build.outputs.base_name }}
+      version_name: ${{ steps.build.outputs.version_name }}
     defaults:
       run:
         working-directory: android
@@ -91,7 +106,12 @@ jobs:
           [[ -n "$API_URL" ]] && args+=(--api-url "$API_URL")
           scripts/release-build.sh "${args[@]}"
           aab="$(ls -t dist/*.aab | head -1)"
-          echo "aab_name=$(basename "$aab")" >> "$GITHUB_OUTPUT"
+          base="$(basename "$aab" .aab)"   # chime-<versionName>-<versionCode>
+          version_name="${base#chime-}"
+          {
+            echo "base_name=$base"
+            echo "version_name=${version_name%-*}"
+          } >> "$GITHUB_OUTPUT"
 
       - name: Remove secrets from the workspace
         if: always()
@@ -99,10 +119,46 @@ jobs:
 
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: ${{ steps.build.outputs.aab_name }}
-          path: android/dist/${{ steps.build.outputs.aab_name }}
+          name: ${{ steps.build.outputs.base_name }}
+          path: |
+            android/dist/${{ steps.build.outputs.base_name }}.aab
+            android/dist/${{ steps.build.outputs.base_name }}.apk
+            android/dist/${{ steps.build.outputs.base_name }}-mapping.txt
           if-no-files-found: error
           retention-days: 30
+
+  play:
+    name: Publish to Google Play
+    if: github.ref_type == 'tag' || inputs.publish_to_play
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    concurrency:
+      group: android-play # one Play edit at a time
+      cancel-in-progress: false
+    steps:
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: ${{ needs.build.outputs.base_name }}
+
+      - name: Check the service account secret
+        env:
+          SERVICE_ACCOUNT_JSON: ${{ secrets.CHIME_PLAY_SERVICE_ACCOUNT_JSON }}
+        run: |
+          if [[ -z "$SERVICE_ACCOUNT_JSON" ]]; then
+            echo "::error::Missing repository secret CHIME_PLAY_SERVICE_ACCOUNT_JSON (run scripts/release-android.sh --set-secrets)"
+            exit 1
+          fi
+
+      - uses: r0adkll/upload-google-play@e738b9dd8f2476ea806d921b64aacd24f34515a5 # v1.1.5
+        with:
+          serviceAccountJsonPlainText: ${{ secrets.CHIME_PLAY_SERVICE_ACCOUNT_JSON }}
+          packageName: com.podnoms.chime
+          releaseFiles: ${{ needs.build.outputs.base_name }}.aab
+          mappingFile: ${{ needs.build.outputs.base_name }}-mapping.txt
+          releaseName: ${{ needs.build.outputs.version_name }}
+          track: ${{ vars.CHIME_PLAY_TRACK || 'alpha' }}
+          status: ${{ vars.CHIME_PLAY_RELEASE_STATUS || 'completed' }}
 
   release:
     name: GitHub release
@@ -115,11 +171,13 @@ jobs:
     steps:
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
-          name: ${{ needs.build.outputs.aab_name }}
+          name: ${{ needs.build.outputs.base_name }}
 
       - uses: softprops/action-gh-release@8a0cd651e5b2365bd640854a3fa5dfc70e4875f3 # v3.0.4
         with:
           name: Android ${{ github.ref_name }}
-          files: ${{ needs.build.outputs.aab_name }}
+          files: |
+            ${{ needs.build.outputs.base_name }}.aab
+            ${{ needs.build.outputs.base_name }}.apk
           generate_release_notes: true
           fail_on_unmatched_files: true

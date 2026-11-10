@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Builds a signed release bundle (.aab) for upload to Google Play.
+# Builds a signed release bundle (.aab) for upload to Google Play, plus a signed .apk for sideloading
+# and the R8 mapping file (for deobfuscating Play crash reports). All three land in android/dist/.
 #
 #   android/scripts/release-build.sh [--version-name 0.2.0] [--version-code N] [--api-url https://…]
 #
@@ -88,13 +89,26 @@ gradle_args=(-Pchime.versionCode="$version_code" -Pchime.versionName="$version_n
 [[ -n "$api_url" ]] && gradle_args+=(-Pchime.releaseApiUrl="$api_url")
 
 # --no-daemon: never reuse an IDE-started daemon (e.g. one running on VS Code's bundled JRE, which lacks jlink).
-./gradlew --no-daemon "${gradle_args[@]}" :app:testDebugUnitTest :app:bundleRelease
+./gradlew --no-daemon "${gradle_args[@]}" :app:testDebugUnitTest :app:bundleRelease :app:assembleRelease
 
 aab="app/build/outputs/bundle/release/app-release.aab"
 [[ -f "$aab" ]] || die "build finished but $aab wasn't produced"
 mkdir -p dist
-out="dist/chime-$version_name-$version_code.aab"
+base="dist/chime-$version_name-$version_code"
+out="$base.aab"
 cp "$aab" "$out"
+
+apk="app/build/outputs/apk/release/app-release.apk"
+[[ -f "$apk" ]] || die "build finished but $apk wasn't produced (is the release signing config set?)"
+out_apk="$base.apk"
+cp "$apk" "$out_apk"
+
+mapping="app/build/outputs/mapping/release/mapping.txt"
+out_mapping=""
+if [[ -f "$mapping" ]]; then
+    out_mapping="$base-mapping.txt"
+    cp "$mapping" "$out_mapping"
+fi
 
 # --- Verify the signature --------------------------------------------------------------------------
 fingerprint() { keytool -list -v -keystore "$CHIME_KEYSTORE_PATH" -alias "$CHIME_KEY_ALIAS" \
@@ -104,15 +118,28 @@ key_sha256="$(fingerprint SHA256)"
 signed_sha1="$(keytool -printcert -jarfile "$out" | sed -n 's/^[[:space:]]*SHA1: //p' | head -1)"
 [[ "$signed_sha1" == "$key_sha1" ]] || die "$out isn't signed with the upload key (got '${signed_sha1:-unsigned}')"
 
+# minSdk 26 means the APK has no v1 (JAR) signature, so keytool can't read it; use apksigner.
+sdk_dir="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-$(sed -n 's/^sdk\.dir=//p' local.properties 2>/dev/null)}}"
+apksigner="$(ls -1d "$sdk_dir"/build-tools/*/apksigner 2>/dev/null | sort -V | tail -1 || true)"
+if [[ -x "$apksigner" ]]; then
+    apk_sha1="$("$apksigner" verify --print-certs "$out_apk" | sed -n 's/^.*[Ss]igner.* certificate SHA-1 digest: //p' | head -1)"
+    want="$(tr -d ':' <<<"$key_sha1" | tr 'A-F' 'a-f')"
+    [[ "$apk_sha1" == "$want" ]] || die "$out_apk isn't signed with the upload key (got '${apk_sha1:-unsigned}')"
+else
+    echo "warning: apksigner not found under \$ANDROID_HOME/build-tools; not verifying the APK signature" >&2
+fi
+
 cat <<EOF
 
 ==> Done: android/$out
+          android/$out_apk (sideload; signed with the upload key, not Play's app signing key)${out_mapping:+
+          android/$out_mapping}
     Version:      $version_name ($version_code)
     API URL:      ${api_url:-https://chime.ferg.al}
     Upload key:   SHA-1   $key_sha1
                   SHA-256 $key_sha256
 
-Upload it in Play Console -> Test and release -> (Internal testing) -> Create new release.
+Upload it in Play Console -> Test and release -> Create new release, or release from CI with scripts/release-android.sh.
 Google sign-in on Play-installed builds needs an Android OAuth client (Google Cloud -> podnoms-chime ->
 Clients) with the *app signing* key's SHA-1 from Play Console -> Test and release -> App integrity.
 Add one with the upload key's SHA-1 too if you'll sideload release builds. (Push doesn't need either.)
