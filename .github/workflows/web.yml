@@ -30,7 +30,7 @@ concurrency:
 jobs:
   test:
     name: Check and test
-    runs-on: ubuntu-latest
+    runs-on: avrea-ubuntu-latest-2-vcpu
     timeout-minutes: 10
     defaults:
       run:
@@ -52,7 +52,7 @@ jobs:
   image:
     name: Docker image
     needs: test
-    runs-on: ubuntu-latest
+    runs-on: avrea-ubuntu-latest-2-vcpu
     timeout-minutes: 20
     permissions:
       contents: read
