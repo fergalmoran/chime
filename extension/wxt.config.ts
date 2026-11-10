@@ -12,8 +12,10 @@ export default defineConfig({
     permissions: ['storage', 'alarms', 'notifications', 'identity', 'activeTab'],
     action: { default_title: 'Chime' },
     // Pin the extension ID so the Google OAuth redirect URI stays stable.
-    // Chrome derives the ID from this public key (see README).
-    ...(browser !== 'firefox' && process.env.WXT_CHROME_EXTENSION_KEY
+    // Chrome derives the ID from this public key (see README). The Chrome Web
+    // Store rejects uploads whose manifest has a `key`, so `bun run zip` sets
+    // CHIME_STORE_BUILD to leave it out; the store assigns the ID itself.
+    ...(browser !== 'firefox' && !process.env.CHIME_STORE_BUILD && process.env.WXT_CHROME_EXTENSION_KEY
       ? { key: process.env.WXT_CHROME_EXTENSION_KEY }
       : {}),
     ...(browser === 'firefox'

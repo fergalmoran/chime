@@ -1,5 +1,10 @@
 # Chime
 
+[![API](https://github.com/fergalmoran/chime/actions/workflows/api.yml/badge.svg?branch=trunk)](https://github.com/fergalmoran/chime/actions/workflows/api.yml?query=branch%3Atrunk)
+[![Web](https://github.com/fergalmoran/chime/actions/workflows/web.yml/badge.svg?branch=trunk)](https://github.com/fergalmoran/chime/actions/workflows/web.yml?query=branch%3Atrunk)
+[![Android](https://github.com/fergalmoran/chime/actions/workflows/android.yml/badge.svg)](https://github.com/fergalmoran/chime/actions/workflows/android.yml)
+[![Android release](https://img.shields.io/github/v/release/fergalmoran/chime?filter=android-v*&label=android&sort=semver)](https://github.com/fergalmoran/chime/releases)
+
 Sync notifications from your Android phone to your desktop.
 
 ```
@@ -63,6 +68,7 @@ In [Google Cloud Console](https://console.cloud.google.com/apis/credentials) cre
        ```
        Redirect URI is then `https://<extension-id>.chromiumapp.org/`. Once published, use the public key
        shown in the Chrome Web Store dashboard instead so dev and store builds share the ID.
+       The store rejects a manifest containing `key`, so `bun run zip` builds without it.
 2. **Android** client: package `com.podnoms.chime` + SHA-1 of your signing key
    (`keytool -list -v -keystore ~/.android/debug.keystore -storepass android` for debug builds).
    Nothing needs to be configured in the app for this client; Google matches it by package + signature.

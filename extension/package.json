@@ -10,12 +10,13 @@
     "dev:firefox": "wxt -b firefox",
     "build": "wxt build",
     "build:firefox": "wxt build -b firefox",
-    "zip": "wxt zip",
+    "zip": "CHIME_STORE_BUILD=1 wxt zip",
     "zip:firefox": "wxt zip -b firefox",
     "compile": "tsc --noEmit",
     "postinstall": "wxt prepare"
   },
   "dependencies": {
+    "@microsoft/signalr": "^10.0.11",
     "react": "^19.2.4",
     "react-dom": "^19.2.4"
   },
