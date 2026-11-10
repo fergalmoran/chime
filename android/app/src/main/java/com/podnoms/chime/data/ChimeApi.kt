@@ -2,6 +2,7 @@ package com.podnoms.chime.data
 
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
+import io.ktor.client.engine.HttpClientEngine
 import io.ktor.client.engine.okhttp.OkHttp
 import io.ktor.client.plugins.HttpTimeout
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
@@ -28,8 +29,11 @@ class ApiException(val status: HttpStatusCode, message: String? = null) : Except
 }
 
 /** Thin client over the Chime API that transparently refreshes expired access tokens. */
-class ChimeApi(private val sessions: SessionStore) {
-    private val client = HttpClient(OkHttp) {
+class ChimeApi(
+    private val sessions: SessionRepository,
+    engine: HttpClientEngine = OkHttp.create(),
+) {
+    private val client = HttpClient(engine) {
         expectSuccess = false
         install(ContentNegotiation) {
             json(Json { ignoreUnknownKeys = true; explicitNulls = false })

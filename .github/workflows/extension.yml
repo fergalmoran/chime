@@ -1,0 +1,43 @@
+# Type-checks and tests the browser extension on pushes to trunk and pull requests that touch it.
+# Store packages are built by hand (bun run zip / zip:firefox), so this doesn't publish anything.
+name: Extension
+
+on:
+  push:
+    branches: [trunk]
+    paths:
+      - "extension/**"
+      - ".github/workflows/extension.yml"
+  pull_request:
+    paths:
+      - "extension/**"
+      - ".github/workflows/extension.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: extension-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Check and test
+    runs-on: avrea-ubuntu-latest-2-vcpu
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: extension
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.1
+
+      - run: bun install --frozen-lockfile # postinstall runs `wxt prepare`, which generates the types tsc needs
+      - run: bun run compile
+      - run: bun test

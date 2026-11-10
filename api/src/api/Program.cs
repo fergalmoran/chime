@@ -1,13 +1,13 @@
 using System.Text.Json.Serialization;
-using Microsoft.AspNetCore.DataProtection;
-using Microsoft.AspNetCore.Authentication.BearerToken;
-using Microsoft.AspNetCore.Identity;
-using Microsoft.EntityFrameworkCore;
 using Chime.Api.Auth;
 using Chime.Api.Data;
 using Chime.Api.Endpoints;
 using Chime.Api.Hubs;
 using Chime.Api.Services;
+using Microsoft.AspNetCore.Authentication.BearerToken;
+using Microsoft.AspNetCore.DataProtection;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -35,7 +35,7 @@ builder.Services.Configure<BearerTokenOptions>(IdentityConstants.BearerScheme, o
 // Bearer and refresh tokens are encrypted with Data Protection keys. Keep the key ring on a persistent volume
 // in containers (DataProtection:KeysPath), or every restart/redeploy invalidates every signed-in session.
 var dataProtection = builder.Services.AddDataProtection().SetApplicationName("chime");
-if (builder.Configuration["DataProtection:KeysPath"] is { Length: > 0 } keysPath) {
+if (builder.Configuration["DataProtection:KeysPath"] is {Length: > 0} keysPath) {
   dataProtection.PersistKeysToFileSystem(new DirectoryInfo(keysPath));
 }
 

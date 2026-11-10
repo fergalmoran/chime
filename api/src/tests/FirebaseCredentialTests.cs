@@ -1,8 +1,8 @@
 using System.Security.Cryptography;
 using System.Text.Json;
+using Chime.Api.Services;
 using Google.Apis.Auth.OAuth2;
 using Microsoft.Extensions.Options;
-using Chime.Api.Services;
 
 namespace Chime.Api.Tests;
 
@@ -11,7 +11,7 @@ public class FirebaseCredentialTests {
   public async Task Configured_credentials_are_loaded_from_memory_and_scoped_for_messaging() {
     var credential = await MobileLinkSender.CreateCredentialAsync(new FirebaseOptions {
       ProjectId = "test-project",
-      CredentialsJson = CreateServiceAccountJson(),
+      CredentialsJson = CreateServiceAccountJson()
     }, AppContext.BaseDirectory);
 
     var serviceAccount = Assert.IsType<ServiceAccountCredential>(credential.UnderlyingCredential);
@@ -41,7 +41,7 @@ public class FirebaseCredentialTests {
     try {
       await File.WriteAllTextAsync(path, CreateServiceAccountJson());
       var credential = await MobileLinkSender.CreateCredentialAsync(new FirebaseOptions {
-        CredentialsFilePath = relative ? "credentials.json" : path,
+        CredentialsFilePath = relative ? "credentials.json" : path
       }, root.FullName);
 
       var serviceAccount = Assert.IsType<ServiceAccountCredential>(credential.UnderlyingCredential);
@@ -57,7 +57,7 @@ public class FirebaseCredentialTests {
   public async Task Missing_file_is_a_configuration_error_without_adc_fallback() {
     var error = await Assert.ThrowsAsync<OptionsValidationException>(() =>
       MobileLinkSender.CreateCredentialAsync(new FirebaseOptions {
-        CredentialsFilePath = $"missing-{Guid.NewGuid():N}.json",
+        CredentialsFilePath = $"missing-{Guid.NewGuid():N}.json"
       }, Path.GetTempPath()));
     Assert.Contains("Firebase:CredentialsFilePath", error.Message);
     Assert.Contains("readable", error.Message);
@@ -82,7 +82,7 @@ public class FirebaseCredentialTests {
     var error = await Assert.ThrowsAsync<OptionsValidationException>(() =>
       MobileLinkSender.CreateCredentialAsync(new FirebaseOptions {
         CredentialsFilePath = "credentials.json",
-        CredentialsJson = "test-sensitive-marker",
+        CredentialsJson = "test-sensitive-marker"
       }, Path.GetTempPath()));
     Assert.Contains("not both", error.Message);
     Assert.DoesNotContain("test-sensitive-marker", error.ToString());
@@ -97,7 +97,7 @@ public class FirebaseCredentialTests {
       private_key = key.ExportPkcs8PrivateKeyPem(),
       client_email = "sender@test-project.iam.gserviceaccount.com",
       client_id = "123456789",
-      token_uri = "https://oauth2.googleapis.com/token",
+      token_uri = "https://oauth2.googleapis.com/token"
     });
   }
 }

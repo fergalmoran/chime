@@ -13,15 +13,22 @@ import kotlinx.coroutines.flow.map
 
 private val Context.sessionDataStore: DataStore<Preferences> by preferencesDataStore(name = "session")
 
+/** Where [ChimeApi] keeps the signed-in session (an interface so the API client can be unit-tested). */
+interface SessionRepository {
+    suspend fun current(): Session?
+    suspend fun save(session: Session)
+    suspend fun clear()
+}
+
 /** Persists the signed-in session in app-private storage. */
-class SessionStore(context: Context) {
+class SessionStore(context: Context) : SessionRepository {
     private val dataStore = context.sessionDataStore
 
     val session: Flow<Session?> = dataStore.data.map { it.toSession() }
 
-    suspend fun current(): Session? = session.first()
+    override suspend fun current(): Session? = session.first()
 
-    suspend fun save(session: Session) {
+    override suspend fun save(session: Session) {
         dataStore.edit { prefs ->
             prefs[API_URL] = session.apiUrl
             prefs[EMAIL] = session.email
@@ -32,7 +39,7 @@ class SessionStore(context: Context) {
         }
     }
 
-    suspend fun clear() {
+    override suspend fun clear() {
         dataStore.edit { it.clear() }
     }
 

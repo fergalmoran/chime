@@ -1,5 +1,4 @@
 <Solution>
-  <Folder Name="/tests/" />
-  <Project Path="src/api/chime-api.csproj" />
-  <Project Path="src/tests/chime-api-tests.csproj" />
+  <Project Path="src/api/chime-api.csproj"/>
+  <Project Path="src/tests/chime-api-tests.csproj"/>
 </Solution>
