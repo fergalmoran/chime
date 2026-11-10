@@ -174,21 +174,26 @@ The extension refreshes as soon as the feed changes, instead of waiting for its 
 Both keep polling as a safety net: every minute when no live channel is up, every 15 minutes when one is.
 
 Web Push needs a VAPID key pair in the API configuration (`WebPush:PublicKey`, `WebPush:PrivateKey`, both
-base64url). Without it, `GET /api/web-push/key` returns `404` and Chrome falls back to polling. Generate a pair
-and store it without printing the private key:
+base64url). Without it, `GET /api/web-push/key` returns `404` and Chrome falls back to polling.
+`scripts/generate-vapid-keys.sh` generates a pair (needs `openssl`). Use a separate pair for each environment.
+
+**Production:** the script prints the pair as environment variables for the API container:
 
 ```sh
-cd api/src/api
-openssl ecparam -name prime256v1 -genkey -noout -out vapid.pem
-b64u() { base64 -w0 | tr '+/' '-_' | tr -d '='; }
-dotnet user-secrets set "WebPush:PublicKey"  "$(openssl ec -in vapid.pem -pubout -outform DER | tail -c 65 | b64u)"
-dotnet user-secrets set "WebPush:PrivateKey" "$(openssl ec -in vapid.pem -outform DER | head -c 39 | tail -c 32 | b64u)"
-shred -u vapid.pem
+scripts/generate-vapid-keys.sh
+# WebPush__PublicKey=BHzQ…
+# WebPush__PrivateKey=x8Kd…
 ```
 
-In production set `WebPush__PublicKey` and `WebPush__PrivateKey` instead. Changing the pair makes existing
-subscriptions fail until each extension re-checks with the API (at most a day later). `WebPush:Subject` (default
-`https://chime.ferg.al`) is the contact URL sent to push services.
+Add both lines to the API container's environment (e.g. the `env_file` or `environment:` of its compose service,
+or a secret store), then restart it. Redirect straight into a file to keep the private key out of your terminal
+scrollback: `scripts/generate-vapid-keys.sh >> chime-api.env` (keep that file out of git). Check it's live with
+an authenticated `GET /api/web-push/key`, which returns the public key instead of `404`.
+
+**Development:** `scripts/generate-vapid-keys.sh --user-secrets` stores the pair in the API's user-secrets.
+
+Changing a deployed pair makes existing subscriptions fail until each extension re-checks with the API (at most
+a day later). `WebPush:Subject` (default `https://chime.ferg.al`) is the contact URL sent to push services.
 
 ## API overview
 
