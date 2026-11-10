@@ -54,6 +54,7 @@ import androidx.compose.ui.unit.dp
 import androidx.core.app.NotificationManagerCompat
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.podnoms.chime.BuildConfig
 import com.podnoms.chime.R
 import com.podnoms.chime.auth.GoogleSignIn
 import com.podnoms.chime.data.Session
@@ -128,14 +129,17 @@ private fun LoginScreen(viewModel: MainViewModel) {
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
         Text("Sign in with your Google account to start syncing notifications to your desktop.", style = MaterialTheme.typography.bodyLarge)
-        OutlinedTextField(
-            value = form.apiUrl,
-            onValueChange = { v -> viewModel.updateLoginForm { it.copy(apiUrl = v) } },
-            label = { Text("Server URL") },
-            singleLine = true,
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri),
-            modifier = Modifier.fillMaxWidth(),
-        )
+        // Release builds always use the baked-in server (BuildConfig.DEFAULT_API_URL); only debug builds can point elsewhere.
+        if (BuildConfig.DEBUG) {
+            OutlinedTextField(
+                value = form.apiUrl,
+                onValueChange = { v -> viewModel.updateLoginForm { it.copy(apiUrl = v) } },
+                label = { Text("Server URL") },
+                singleLine = true,
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri),
+                modifier = Modifier.fillMaxWidth(),
+            )
+        }
         if (GoogleSignIn.isConfigured) {
             Button(
                 onClick = {

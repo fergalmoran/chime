@@ -64,7 +64,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
         viewModelScope.launch {
             try {
-                container.api.loginWithGoogle(_loginForm.value.apiUrl, credential.idToken, credential.email, deviceName())
+                val apiUrl = if (BuildConfig.DEBUG) _loginForm.value.apiUrl else BuildConfig.DEFAULT_API_URL
+                container.api.loginWithGoogle(apiUrl, credential.idToken, credential.email, deviceName())
                 _loginForm.update { LoginForm(apiUrl = it.apiUrl) }
             } catch (e: Exception) {
                 _loginForm.update { it.copy(busy = false, error = e.message ?: "Couldn't reach the server") }
