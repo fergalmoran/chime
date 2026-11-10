@@ -1,0 +1,125 @@
+# Builds the signed Android release bundle (.aab) with android/scripts/release-build.sh.
+#
+# - Pushing an `android-v*` tag (see scripts/release-android.sh) builds that version and attaches the
+#   .aab to a GitHub release for the tag.
+# - Running it by hand (workflow_dispatch) builds an .aab as a workflow artifact only.
+#
+# Upload the .aab to Play Console yourself; this workflow doesn't publish to Play.
+#
+# Required repository secrets (scripts/release-android.sh --set-secrets uploads them from your machine):
+#   CHIME_UPLOAD_KEYSTORE_BASE64       base64 of the Play upload keystore (~/.config/chime/upload-keystore.jks)
+#   CHIME_UPLOAD_KEYSTORE_PASSWORD     its password (~/.config/chime/upload-keystore.env)
+#   CHIME_GOOGLE_SERVICES_JSON_BASE64  base64 of android/app/google-services.json (gitignored)
+# Optional repository variable:
+#   CHIME_RELEASE_API_URL              default server URL baked into the app (defaults to https://chime.ferg.al)
+name: Android
+
+on:
+  push:
+    tags: ["android-v*"]
+  workflow_dispatch:
+    inputs:
+      version_name:
+        description: "Version name (blank: latest android-v* tag, else 0.1.0)"
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: android-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: Build release bundle
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    outputs:
+      aab_name: ${{ steps.build.outputs.aab_name }}
+    defaults:
+      run:
+        working-directory: android
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0 # release-build.sh reads the latest android-v* tag when no version is given
+
+      - uses: actions/setup-java@77dd5b2ce225ea11469928ac317850245a74ae78 # v6.2.0
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - uses: gradle/actions/setup-gradle@8da46b539cd8fe6ab27ca75128919a18d757604c # v6.4.1
+        with:
+          cache-read-only: ${{ github.event_name != 'push' }}
+
+      - name: Restore signing key and google-services.json
+        env:
+          KEYSTORE_BASE64: ${{ secrets.CHIME_UPLOAD_KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.CHIME_UPLOAD_KEYSTORE_PASSWORD }}
+          GOOGLE_SERVICES_BASE64: ${{ secrets.CHIME_GOOGLE_SERVICES_JSON_BASE64 }}
+        run: |
+          missing=()
+          [[ -n "$KEYSTORE_BASE64" ]] || missing+=(CHIME_UPLOAD_KEYSTORE_BASE64)
+          [[ -n "$KEYSTORE_PASSWORD" ]] || missing+=(CHIME_UPLOAD_KEYSTORE_PASSWORD)
+          [[ -n "$GOOGLE_SERVICES_BASE64" ]] || missing+=(CHIME_GOOGLE_SERVICES_JSON_BASE64)
+          if (( ${#missing[@]} )); then
+            echo "::error::Missing repository secrets: ${missing[*]} (run scripts/release-android.sh --set-secrets)"
+            exit 1
+          fi
+          keystore="$RUNNER_TEMP/upload-keystore.jks"
+          base64 -d <<<"$KEYSTORE_BASE64" > "$keystore"
+          base64 -d <<<"$GOOGLE_SERVICES_BASE64" > app/google-services.json
+          echo "CHIME_KEYSTORE_PATH=$keystore" >> "$GITHUB_ENV"
+
+      - name: Build
+        id: build
+        env:
+          CHIME_KEYSTORE_PASSWORD: ${{ secrets.CHIME_UPLOAD_KEYSTORE_PASSWORD }}
+          INPUT_VERSION_NAME: ${{ inputs.version_name }}
+          API_URL: ${{ vars.CHIME_RELEASE_API_URL }}
+        run: |
+          args=()
+          if [[ "$GITHUB_REF_TYPE" == "tag" ]]; then
+            args+=(--version-name "${GITHUB_REF_NAME#android-v}")
+          elif [[ -n "$INPUT_VERSION_NAME" ]]; then
+            args+=(--version-name "$INPUT_VERSION_NAME")
+          fi
+          [[ -n "$API_URL" ]] && args+=(--api-url "$API_URL")
+          scripts/release-build.sh "${args[@]}"
+          aab="$(ls -t dist/*.aab | head -1)"
+          echo "aab_name=$(basename "$aab")" >> "$GITHUB_OUTPUT"
+
+      - name: Remove secrets from the workspace
+        if: always()
+        run: rm -f app/google-services.json "$RUNNER_TEMP/upload-keystore.jks"
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: ${{ steps.build.outputs.aab_name }}
+          path: android/dist/${{ steps.build.outputs.aab_name }}
+          if-no-files-found: error
+          retention-days: 30
+
+  release:
+    name: GitHub release
+    if: github.ref_type == 'tag'
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: ${{ needs.build.outputs.aab_name }}
+
+      - uses: softprops/action-gh-release@8a0cd651e5b2365bd640854a3fa5dfc70e4875f3 # v3.0.4
+        with:
+          name: Android ${{ github.ref_name }}
+          files: ${{ needs.build.outputs.aab_name }}
+          generate_release_notes: true
+          fail_on_unmatched_files: true
