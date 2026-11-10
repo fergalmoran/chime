@@ -48,7 +48,7 @@ concurrency:
 jobs:
   build:
     name: Build release bundle and APK
-    runs-on: ubuntu-latest
+    runs-on: avrea-ubuntu-latest-2-vcpu
     timeout-minutes: 30
     outputs:
       base_name: ${{ steps.build.outputs.base_name }}
@@ -164,7 +164,7 @@ jobs:
     name: GitHub release
     if: github.ref_type == 'tag'
     needs: build
-    runs-on: ubuntu-latest
+    runs-on: avrea-ubuntu-latest-2-vcpu
     timeout-minutes: 5
     permissions:
       contents: write
