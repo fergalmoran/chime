@@ -1,8 +1,10 @@
+import tailwindcss from '@tailwindcss/vite';
 import { defineConfig } from 'wxt';
 
 // See https://wxt.dev/api/reference/wxt/interfaces/inlineconfig.html
 export default defineConfig({
   modules: ['@wxt-dev/module-react'],
+  vite: () => ({ plugins: [tailwindcss()] }),
   // WXT defaults to 3000, which clashes with the web app's dev server.
   webExt: { disabled: true },
   dev: { server: { port: 3010 } },

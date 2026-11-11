@@ -46,7 +46,7 @@ if (( set_secrets )); then
     env_file="$config_dir/upload-keystore.env"
     google_services="android/app/google-services.json"
     play_account="${CHIME_PLAY_SERVICE_ACCOUNT:-$config_dir/play-service-account.json}"
-    [[ -f "$keystore" ]] || die "$keystore is missing (android/scripts/release-build.sh creates it on first run)"
+    [[ -f "$keystore" ]] || die "$keystore is missing (scripts/build-android.sh creates it on first run)"
     [[ -f "$google_services" ]] || die "$google_services is missing"
     [[ -f "$play_account" ]] || die "$play_account is missing: create a service account key for Play publishing (see .github/workflows/android.yml)"
     grep -q '"type": *"service_account"' "$play_account" || die "$play_account isn't a service account key"

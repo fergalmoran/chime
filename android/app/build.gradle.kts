@@ -19,7 +19,7 @@ android {
         applicationId = "com.podnoms.chime"
         minSdk = 26
         targetSdk = 37
-        // Release builds pass these (-Pchime.versionCode=…, -Pchime.versionName=…); see scripts/release-build.sh.
+        // Release builds pass these (-Pchime.versionCode=…, -Pchime.versionName=…); see scripts/build-android.sh.
         versionCode = providers.gradleProperty("chime.versionCode").map(String::toInt).getOrElse(1)
         versionName = providers.gradleProperty("chime.versionName").getOrElse("0.1.0")
 

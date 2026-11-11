@@ -1,5 +1,5 @@
 # Builds the signed Android release bundle (.aab), a signed .apk and the R8 mapping file with
-# android/scripts/release-build.sh, and publishes the bundle to Google Play.
+# scripts/build-android.sh, and publishes the bundle to Google Play.
 #
 # - Pushing an `android-v*` tag (see scripts/release-android.sh) builds that version, uploads the .aab
 #   (with its mapping file) to the Play *alpha* (closed testing) track, and attaches the .aab and .apk to
@@ -60,7 +60,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-          fetch-depth: 0 # release-build.sh reads the latest android-v* tag when no version is given
+          fetch-depth: 0 # build-android.sh reads the latest android-v* tag when no version is given
 
       - uses: actions/setup-java@77dd5b2ce225ea11469928ac317850245a74ae78 # v6.2.0
         with:
@@ -104,7 +104,7 @@ jobs:
             args+=(--version-name "$INPUT_VERSION_NAME")
           fi
           [[ -n "$API_URL" ]] && args+=(--api-url "$API_URL")
-          scripts/release-build.sh "${args[@]}"
+          ../scripts/build-android.sh "${args[@]}"
           aab="$(ls -t dist/*.aab | head -1)"
           base="$(basename "$aab" .aab)"   # chime-<versionName>-<versionCode>
           version_name="${base#chime-}"

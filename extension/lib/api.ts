@@ -45,6 +45,35 @@ export const sessionItem = storage.defineItem<Session | null>('local:session', {
 /** Receive time of the newest notification the user has been alerted about. */
 export const lastSeenItem = storage.defineItem<string | null>('local:lastSeen', { fallback: null });
 
+/** A page sent to a phone from this browser. The API doesn't keep these, so the history lives in local storage. */
+export interface PushedPage {
+  id: string;
+  url: string;
+  title: string;
+  deviceId: string;
+  deviceName: string;
+  sentAt: string;
+}
+
+/** How many sent pages the push history keeps. */
+export const PUSH_HISTORY_LIMIT = 50;
+export const pushHistoryItem = storage.defineItem<PushedPage[]>('local:pushHistory', { fallback: [] });
+
+export async function recordPush(page: Omit<PushedPage, 'id' | 'sentAt'>): Promise<PushedPage> {
+  const entry: PushedPage = { ...page, id: crypto.randomUUID(), sentAt: new Date().toISOString() };
+  const history = await pushHistoryItem.getValue();
+  await pushHistoryItem.setValue([entry, ...history].slice(0, PUSH_HISTORY_LIMIT));
+  return entry;
+}
+
+export async function forgetPush(id: string) {
+  const history = await pushHistoryItem.getValue();
+  await pushHistoryItem.setValue(history.filter((p) => p.id !== id));
+}
+
+/** True for chat and SMS notifications, which the popup shows as conversations rather than in the feed. */
+export const isMessage = (n: Pick<SyncedNotification, 'category'>) => n.category === 'Message' || n.category === 'Sms';
+
 /** Google OAuth web client ID; Google sign-in is hidden when unset. */
 export const GOOGLE_CLIENT_ID = (import.meta.env.WXT_GOOGLE_CLIENT_ID as string | undefined) || undefined;
 
@@ -99,6 +128,7 @@ export async function loginWithGoogle(apiUrl: string, idToken: string): Promise<
 export async function logout() {
   await sessionItem.setValue(null);
   await lastSeenItem.setValue(null);
+  await pushHistoryItem.setValue([]);
 }
 
 async function refresh(session: Session): Promise<Session | null> {
@@ -152,8 +182,11 @@ export const sendLinkToMobile = (deviceId: string, url: string, title: string) =
     body: JSON.stringify({ url, title }),
   });
 
+/** How many undismissed notifications the badge counts and the popup lists. */
+export const FEED_LIMIT = 50;
+
 export const fetchNotifications = () =>
-  request<NotificationPage>('/api/notifications?limit=20').then((p) => p.items);
+  request<NotificationPage>(`/api/notifications?limit=${FEED_LIMIT}`).then((p) => p.items);
 
 export const dismissNotification = (id: string) =>
   request<void>(`/api/notifications/${id}/dismiss`, { method: 'POST' });
